@@ -1,4 +1,4 @@
-# Cassiopeia Projects
+# Cassiopeia Project
 
 This is a Machine Learning Project
 
