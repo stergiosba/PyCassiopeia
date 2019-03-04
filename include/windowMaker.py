@@ -7,26 +7,24 @@ Created on Wed Feb 27 13:32:40 2019
 """
 import pandas as pd
 import seaborn as sns
-import numpy as np
 import os
 
-def windowMaker(_data_df,_fit_df,__measurement,__window_features,_save,__save_path):
-    save_file_name = 'TRAIN_DATA.csv'
-    if not os.path.exists(__save_path):
-        os.makedirs(__save_path)
-        
-    print(os.path.exists(__save_path+"/"+save_file_name))
+def windowMaker(_data_df,_fit_df,__measurement,__window_settings,_csv_flag,__model_path):
+    csv_save_name = 'train_data.csv'
+    #exit setting
+    
+    settings_path = os.path.exists(__model_path+"/"+csv_save_name)
     print(50*"-")
     print("~$> Initializing Window Making Processing")
     print(50*"-")
-    print("~$> Window size",__window_features[0],"seconds.")
-    print("~$> Window step",__window_features[1],"seconds.")
+    print("~$> Window size",__window_settings[0],"seconds.")
+    print("~$> Window step",__window_settings[1],"seconds.")
     print(50*"-")
     #print("~$> You have chosen to segmentize the data per",segment_size,"seconds.")
     ave_df = pd.DataFrame()
     window_count = 0
-    window_size = __window_features[0]
-    window_step = __window_features[1]
+    window_size = __window_settings[0]
+    window_step = __window_settings[1]
     win_s = 0
     win_f = window_size
     window_count = 0
@@ -52,9 +50,9 @@ def windowMaker(_data_df,_fit_df,__measurement,__window_features,_save,__save_pa
                 acc_list.append(acc)
         ave_win_acc = sum(acc_list)/len(acc_list)
         #ave_acc_df = ave_acc_df.append(acc_list)
-        if acc < -0.00005:
+        if acc < -0.001:
             label =0 #Decel
-        elif acc > 0.00005:
+        elif acc > 0.001:
             label =1 #Accel
         else:
             label =2#S
@@ -80,6 +78,7 @@ def windowMaker(_data_df,_fit_df,__measurement,__window_features,_save,__save_pa
     print("~$> Plotting Pearson Correlation Matrix")
     correlations = _fit_df[_fit_df.columns].corr(method='pearson')
     heat_ax = sns.heatmap(correlations, cmap="YlGnBu", annot = True)
-    if _save == True:
-        _fit_df.to_csv(__save_path+"/"+save_file_name)
+    if _csv_flag == True:
+        _fit_df.to_csv(__model_path+"/"+csv_save_name)
+
     return _fit_df

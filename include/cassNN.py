@@ -73,11 +73,14 @@ def CAS_NN(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
             #    [==============================]
                 
         # plot the cost
-        plt.plot(np.squeeze(costs))
-        plt.ylabel('cost')
-        plt.xlabel('iterations (per tens)')
-        plt.title("Learning rate =" + str(learning_rate))
+        """
+        costs_ax = plt.plot()
+        costs_ax.plot(np.squeeze(costs))
+        costs_ax.ylabel('cost')
+        costs_ax.xlabel('iterations (per tens)')
+        costs_ax.title("Learning rate =" + str(learning_rate))
         plt.show()
+        """
 
         # lets save the parameters in a variable
         parameters = sess.run(parameters)
@@ -88,8 +91,10 @@ def CAS_NN(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
 
         # Calculate accuracy on the test set
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-
+        train_acc = accuracy.eval({X: X_train, Y: Y_train})
+        test_acc = accuracy.eval({X: X_test, Y: Y_test})
+        
         print("Train Accuracy:", accuracy.eval({X: X_train, Y: Y_train}))
         print("Test Accuracy:", accuracy.eval({X: X_test, Y: Y_test}))
         
-        return parameters
+        return (parameters,train_acc,test_acc)
