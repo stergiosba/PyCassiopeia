@@ -33,8 +33,6 @@ def CAS_NN(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
     
     # Cost function: Add cost function to tensorflow graph
     cost = compute_cost(Z3, Y)
-    print(Z3)
-    
     # Backpropagation: Define the tensorflow optimizer. Use an AdamOptimizer.
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
     

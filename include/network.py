@@ -16,14 +16,13 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 from sklearn.model_selection import train_test_split
 #tf.reset_default_graph()   # To clear the defined variables and operations of the previous cell
-# create graph
+# create grap
 
 class Network():
     def __init__(self,structure=np.array([]),export=False):
         print("~$> Creating Network")
         self.structure = structure
         self.print_cost = True
-        #print(self.init_layers_parameters())
         self.layers = {}
         if export:
             print("~$> Exporting Network Information")

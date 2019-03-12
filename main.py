@@ -29,7 +29,8 @@ for i in window_sizes:
                 print("~$> Model Window Size:",window_settings[0])
                 print("~$> Model Window Step:",window_settings[1])
                 os.makedirs(model_path)
-                fit_df = dataProcess('./data.csv',model_path,features_list,measurement,window_settings)
+                data_dir = os.getcwd()+"/data"
+                fit_df = dataProcess(data_dir,model_path,features_list,measurement,window_settings)
             else:
                 print("~$> Loading Model")
                 print("~$> Model Window Size:",window_settings[0])

@@ -11,6 +11,7 @@ import numpy as np
 import math
 
 def nullClean(df,_measurement):
+    rev_full_df = pd.DataFrame()
     print("~$> Calculated",df[df[_measurement].isnull()].size,"missing datapoints.")
     for i in df[df[_measurement].isnull()].index:
         df[_measurement][i] = df[_measurement][i-1]
