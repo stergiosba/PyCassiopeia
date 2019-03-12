@@ -19,7 +19,7 @@ def flagControl(___window_features):
     print("~$> Exporting Setting File")
 
 def exitSettings(_save_path, _window_features, win_max, train_acc, test_acc):
-    settings_file = "cassnn.settitgs.txt"
+    settings_file = "cassnn.info.txt"
     exit_path = _save_path+"/"+settings_file
     lines = [
             "[CASS_NN_SETTINGS]",
@@ -33,6 +33,6 @@ def exitSettings(_save_path, _window_features, win_max, train_acc, test_acc):
     with open(exit_path,"w") as file:
         for line in lines:
             file.write(line+'\n')
-    print("~$> Exporting Setting File")
+    print("~$> Exporting Information File")
     
     return exit_path

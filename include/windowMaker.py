@@ -51,11 +51,11 @@ def windowMaker(_data_df,_fit_df,__measurement,__window_settings,_csv_flag,__mod
         ave_win_acc = sum(acc_list)/len(acc_list)
         #ave_acc_df = ave_acc_df.append(acc_list)
         if acc < -0.001:
-            label =0 #Decel
+            label =1 #Decel
         elif acc > 0.001:
-            label =1 #Accel
+            label =2 #Accel
         else:
-            label =2#S
+            label =3#S
         #del acc_list
         _fit_df = _fit_df.append({
             'LABEL': label,
@@ -69,7 +69,7 @@ def windowMaker(_data_df,_fit_df,__measurement,__window_settings,_csv_flag,__mod
         win_s+=window_step
         win_f+=window_step
         window_count+=1
-        print("Window",window_count,'/',win_max)
+        print("~$> Window",window_count,'/',win_max)
         
     win_max = window_count
     print("~$> Total Windows Number is",window_count)

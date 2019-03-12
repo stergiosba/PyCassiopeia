@@ -5,10 +5,18 @@ Created on Thu Feb 28 13:32:50 2019
 @author: stergios
 """
 import tensorflow as tf
+import pandas as pd
 #from tensorflow import set_random_seed
 import numpy as np
 import math
 
+def nullClean(df,_measurement):
+    print("~$> Calculated",df[df[_measurement].isnull()].size,"missing datapoints.")
+    for i in df[df[_measurement].isnull()].index:
+        df[_measurement][i] = df[_measurement][i-1]
+    print("~$> All missing datapoints have been restored")
+    return df
+    
 def labelMaker(val):
     if val == 1:
         return [1, 0, 0]
@@ -41,9 +49,9 @@ def initialize_parameters(num_input_features):
     tf.set_random_seed(1)           
     W1 = tf.get_variable("W1", [10, num_input_features], initializer = tf.contrib.layers.xavier_initializer(seed=1))
     b1 = tf.get_variable("b1", [10, 1], initializer = tf.zeros_initializer())
-    W2 = tf.get_variable("W2", [5, 10], initializer = tf.contrib.layers.xavier_initializer(seed=1))
-    b2 = tf.get_variable("b2", [5, 1], initializer = tf.zeros_initializer())
-    W3 = tf.get_variable("W3", [3, 5], initializer = tf.contrib.layers.xavier_initializer(seed=1))
+    W2 = tf.get_variable("W2", [150, 10], initializer = tf.contrib.layers.xavier_initializer(seed=1))
+    b2 = tf.get_variable("b2", [150, 1], initializer = tf.zeros_initializer())
+    W3 = tf.get_variable("W3", [3, 150], initializer = tf.contrib.layers.xavier_initializer(seed=1))
     b3 = tf.get_variable("b3", [3, 1], initializer = tf.zeros_initializer())
     
     parameters = {"W1": W1,
@@ -52,7 +60,6 @@ def initialize_parameters(num_input_features):
                   "b2": b2,
                   "W3": W3,
                   "b3": b3}
-    
     return parameters
     
 def forward_propagation(X, parameters):
@@ -80,9 +87,9 @@ def forward_propagation(X, parameters):
     
     ### START CODE HERE ### (approx. 5 lines)              # Numpy Equivalents:
     Z1 = tf.add(tf.matmul(W1, X), b1)                      # Z1 = np.dot(W1, X) + b1
-    A1 = tf.nn.relu(Z1)                                    # A1 = relu(Z1)
+    A1 = tf.nn.tanh(Z1)                                    # A1 = relu(Z1)
     Z2 = tf.add(tf.matmul(W2, A1), b2)                     # Z2 = np.dot(W2, a1) + b2
-    A2 = tf.nn.relu(Z2)                                    # A2 = relu(Z2)
+    A2 = tf.nn.tanh(Z2)                                    # A2 = relu(Z2)
     Z3 = tf.add(tf.matmul(W3, A2), b3)                     # Z3 = np.dot(W3,Z2) + b3
     ### END CODE HERE ###
     

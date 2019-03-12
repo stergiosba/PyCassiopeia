@@ -5,12 +5,15 @@ Created on Thu Feb 28 23:07:01 2019
 @author: stergios
 """
 from .utils import *
+import time
 from tensorflow.python.framework import ops
 from tensorflow import set_random_seed
 import matplotlib.pyplot as plt
 
 def CAS_NN(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
-          num_epochs = 200, minibatch_size = 32, print_cost = True):
+          num_epochs = 20, minibatch_size = 32, print_cost = True):
+    begin = time.time()
+    print("~/CassNN$> Starting Neural Training!")
     
     ops.reset_default_graph()                         # to be able to rerun the model without overwriting tf variables
     tf.set_random_seed(1)                             # to keep consistent results
@@ -30,6 +33,7 @@ def CAS_NN(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
     
     # Cost function: Add cost function to tensorflow graph
     cost = compute_cost(Z3, Y)
+    print(Z3)
     
     # Backpropagation: Define the tensorflow optimizer. Use an AdamOptimizer.
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
@@ -66,8 +70,8 @@ def CAS_NN(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
 
             # Print the cost every epoch
             if print_cost == True and epoch % 1 == 0:
-                print("~$> Epoch:",epoch,"/",num_epochs,"~ Cost:",epoch_cost)
-            if print_cost == True and epoch % 5 == 0:
+                print("~/CassNN$> Epoch:",epoch,"/",num_epochs,"~ Cost:",round(epoch_cost,4))
+            if print_cost == True and epoch % 1 == 0:
                 costs.append(epoch_cost)
             #if 
             #    [==============================]
@@ -84,8 +88,9 @@ def CAS_NN(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
 
         # lets save the parameters in a variable
         parameters = sess.run(parameters)
-        print("~$> Parameters have been trained!")
-
+        print("~/CassNN$> Finished Neural Training!")
+        finish = time.time()
+        print("~/CassNN$> Time for training was",round(finish-begin,2),"seconds")
         # Calculate the correct predictions
         correct_prediction = tf.equal(tf.argmax(Z3), tf.argmax(Y))
 
@@ -94,7 +99,7 @@ def CAS_NN(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
         train_acc = accuracy.eval({X: X_train, Y: Y_train})
         test_acc = accuracy.eval({X: X_test, Y: Y_test})
         
-        print("Train Accuracy:", accuracy.eval({X: X_train, Y: Y_train}))
-        print("Test Accuracy:", accuracy.eval({X: X_test, Y: Y_test}))
+        print("~/CassNN$> Train Accuracy:", accuracy.eval({X: X_train, Y: Y_train}))
+        print("~/CassNN$> Test Accuracy:", accuracy.eval({X: X_test, Y: Y_test}))
         
         return (parameters,train_acc,test_acc)
