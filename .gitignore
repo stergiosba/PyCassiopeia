@@ -25,3 +25,7 @@ $RECYCLE.BIN/
 
 # Python Binaries
 *.pyc
+
+# CSV Files
+*.csv
+
