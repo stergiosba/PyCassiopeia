@@ -10,33 +10,34 @@ import os
 import pandas as pd
 from numpy.random import seed
 from .windowMaker import windowMaker
-from .utils import nullClean
+from .utils import nullDf, normDf
 seed(1)
 
-def dataProcess(_path,_model_path,_features_list,_measurement,_window_settings):
+def dataProcess(_path,_model_path,_features_list,_measurements,_window_settings):
     begin = time.time()
     print(50*"-")
     print("~$> Initializing Data Processing")
     print(50*"-")
     full_df = pd.DataFrame()
-    files = pd.DataFrame(sorted(os.listdir(_path))).head(10)
-    for file in files[0]:
-        file_df = pd.read_csv(_path+"/"+file)
-        file_df = (file_df[[_measurement]])/file_df[_measurement].max()
-        full_df = full_df.append(file_df, ignore_index=True)
+    files = pd.DataFrame(sorted(os.listdir(_path)))
+    indx = [53,0,14,33,92,15,73,7,52,66,93,76,91,69]
+    indx = [14]
+    for item in indx:
+        file_df = pd.read_csv(_path+"/"+files[0][item],usecols=_measurements,engine='python')
+        file_df = nullDf(file_df,_measurements)
+        full_df = full_df.append(file_df,ignore_index=True)
+    full_df.loc[:,_measurements[0]] *= 220
     #full_df = full_df[_measurement]
     print("~$> Loading the dataset from " +_path)
-    full_df = nullClean(full_df,_measurement)
+    full_df = nullDf(full_df,_measurements)
     full_df.plot()
-    print(full_df[full_df[_measurement].isnull()].size)
-    print("~$> All missing datapoints have been restored")
     fit_df = pd.DataFrame(columns = _features_list)
     print("~$> Datas for",full_df.shape[0],"seconds.")
     #data_df = full_df.head(120000)
     #data_df = full_df.head(full_df.shape[0])
     #print(data_df)
     csv_flag = True
-    fit_df = windowMaker(full_df, fit_df, _measurement, _window_settings, csv_flag, _model_path)
+    fit_df = windowMaker(full_df, fit_df, _measurements, _window_settings, csv_flag, _model_path)
 
     finish = time.time()
     print(50*"-")

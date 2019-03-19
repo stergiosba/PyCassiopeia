@@ -9,6 +9,7 @@ import os
 import time
 import numpy as np
 import json
+import matplotlib.pyplot as plt
 import codecs
 from .utils import *
 import pandas as pd
@@ -63,15 +64,27 @@ class Network():
     def train(self,pd_dataframe,learning_rate,epochs,minibatch_size):
         begin = time.time()
         X_data = pd_dataframe.drop(["LABEL"],axis=1)
-        X_data.plot()
+        #X_data.plot()
         X = X_data.values
         Y_data = pd_dataframe.iloc[:,:1]
         Y = Y_data.values
         Y = np.array([labelMaker(i[0]) for i in Y])
         
         X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3,shuffle=False)#, random_state=0)
-        pd.DataFrame(X_train).plot()
-        pd.DataFrame(X_test).plot()
+        
+        plt.figure(1)
+        plt.subplot(211)
+        plt.title('Training Data')
+        t1 = np.arange(0.0, X_train.shape[0], 1)
+        plt.plot(t1, X_train, marker='.')
+
+        plt.subplot(212)
+        plt.title('Testing Data')
+        t2 = np.arange(0.0, X_test.shape[0], 1)
+        plt.plot(t2, X_test, marker='.')
+        plt.show()
+
+        
         X_train = X_train.transpose()
         X_test = X_test.transpose()
         Y_train = Y_train.transpose()
@@ -118,7 +131,7 @@ class Network():
                 # Print the cost every epoch
                 if self.print_cost == True and epoch % 1 == 0:
                     print("~/CassNN$> Epoch:",epoch,"/",epochs,"~ Cost:",round(epoch_cost,4))
-                if self.print_cost == True and epoch % 5 == 0:
+                if self.print_cost == True and epoch % 1 == 0:
                     costs.append(epoch_cost)
             # lets save the parameters in a variable
             self.layers = sess.run(self.layers)
@@ -154,6 +167,7 @@ class Network():
             name_W = "W"+str(layer_counter)
             name_b = "b"+str(layer_counter)
             self.layers[name_W] = tf.get_variable(name_W, [layer[0], layer[1]], initializer = tf.contrib.layers.xavier_initializer(seed=1))
+            print(self.layers[name_W])
             self.layers[name_b] = tf.get_variable(name_b, [layer[0], 1], initializer = tf.zeros_initializer())
             layer_counter+=1
             

@@ -9,11 +9,11 @@ import pandas as pd
 import seaborn as sns
 import os
 
-def windowMaker(_data_df,_fit_df,__measurement,__window_settings,_csv_flag,__model_path):
+def windowMaker(_data_df,_fit_df,__measurements,__window_settings,_csv_flag,__model_path):
     csv_save_name = 'train_data.csv'
     #exit setting
     
-    settings_path = os.path.exists(__model_path+"/"+csv_save_name)
+    #settings_path = os.path.exists(__model_path+"/"+csv_save_name)
     print(50*"-")
     print("~$> Initializing Window Making Processing")
     print(50*"-")
@@ -46,30 +46,37 @@ def windowMaker(_data_df,_fit_df,__measurement,__window_settings,_csv_flag,__mod
             if rev==0:
                 pass
             else:
-                acc = window_df[__measurement][rev]-window_df[__measurement][rev-1]
+                acc = window_df[__measurements[0]][rev]-window_df[__measurements[0]][rev-1]
                 acc_list.append(acc)
         ave_win_acc = sum(acc_list)/len(acc_list)
         #ave_acc_df = ave_acc_df.append(acc_list)
-        if acc < -0.001:
-            label =1 #Decel
-        elif acc > 0.001:
-            label =2 #Accel
+        if window_count == 0:
+            label = 3 #Starting with Steady
+            prev_ave_win_acc = ave_win_acc
         else:
-            label =3#S
+            if (ave_win_acc-prev_ave_win_acc)<-0.05:
+                label = 1 #Decel
+            elif (ave_win_acc-prev_ave_win_acc)>0.05:
+                label = 2 #Accel
+            else:
+                label = 3 #Steady
         #del acc_list
         _fit_df = _fit_df.append({
             'LABEL': label,
-            'N_MAX': window_df[__measurement].max(),
-            'N_MIN': window_df[__measurement].min(),
-            'N_AVE': window_df[__measurement].mean(),
-            'N_IN' : window_df[__measurement][window_df.index.min()],
-            'N_OUT': window_df[__measurement][window_df.index.max()],
+            'N_MAX': window_df[__measurements[0]].max(),
+            'N_MIN': window_df[__measurements[0]].min(),
+            'N_AVE': window_df[__measurements[0]].mean(),
+            'N_IN' : window_df[__measurements[0]][window_df.index.min()],
+            'N_OUT': window_df[__measurements[0]][window_df.index.max()],
             'A_AVE': ave_win_acc
             },ignore_index=True)
         win_s+=window_step
         win_f+=window_step
+        prev_ave_win_acc = ave_win_acc
         window_count+=1
         print("~$> Window",window_count,'/',win_max)
+        if window_count <50:
+            window_df.plot()
         
     win_max = window_count
     print("~$> Total Windows Number is",window_count)
@@ -78,6 +85,7 @@ def windowMaker(_data_df,_fit_df,__measurement,__window_settings,_csv_flag,__mod
     print("~$> Plotting Pearson Correlation Matrix")
     correlations = _fit_df[_fit_df.columns].corr(method='pearson')
     heat_ax = sns.heatmap(correlations, cmap="YlGnBu", annot = True)
+    os.makedirs(__model_path)
     if _csv_flag == True:
         _fit_df.to_csv(__model_path+"/"+csv_save_name)
 
