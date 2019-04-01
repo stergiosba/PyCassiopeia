@@ -21,7 +21,7 @@ def dataProcess(_path,_model_path,_features_list,_measurements,_window_settings)
     full_df = pd.DataFrame()
     files = pd.DataFrame(sorted(os.listdir(_path)))
     indx = [53,0,14,33,92,15,73,7,52,66,93,76,91,69]
-    indx = [14]
+    indx = [14,10,73,91,33,9,15]
     for item in indx:
         file_df = pd.read_csv(_path+"/"+files[0][item],usecols=_measurements,engine='python')
         file_df = nullDf(file_df,_measurements)

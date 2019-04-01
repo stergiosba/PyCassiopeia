@@ -36,10 +36,9 @@ for i in window_sizes:
                 print("~$> Model Window Step:",window_settings[1])
                 fit_df = pd.read_csv(model_path+"/train_data.csv",usecols=features_list)
             class_names = ['Deceleration', 'Acceleration', 'Steady']
-            fit_df.plot()
-            layers = np.array([[120,6],[100,120],[3,100]])
-            CASS_NN = Network(layers)
-            CASS_NN.train(fit_df,learning_rate=0.0001,epochs=20,minibatch_size=16)
+            
+            NN_DC = Network(np.array([[120,6],[100,120],[3,100]]))
+            final_predictions = NN_DC.train(fit_df,learning_rate=0.0001,epochs=30,minibatch_size=16)
             """
             X_data = fit_df.drop(["LABEL"],axis=1)
             X = X_data.values
@@ -56,9 +55,11 @@ for i in window_sizes:
             num__input_features = X_train.shape[0]
             num_output_features = Y_train.shape[0]
             
-            (parameters,train_acc,test_acc) = CAS_NN(X_train, Y_train, X_test, Y_test, minibatch_size = 2)
+            (parameters,train_acc,test_acc,predictions) = CAS_NN(X_data.transpose(),X_train, Y_train, X_test, Y_test, minibatch_size = 32)
             
             
             exit_path = exitSettings(model_path, window_settings, X_data.shape[0], train_acc, test_acc)
             """
+            
+            
             

@@ -75,8 +75,6 @@ def windowMaker(_data_df,_fit_df,__measurements,__window_settings,_csv_flag,__mo
         prev_ave_win_acc = ave_win_acc
         window_count+=1
         print("~$> Window",window_count,'/',win_max)
-        if window_count <50:
-            window_df.plot()
         
     win_max = window_count
     print("~$> Total Windows Number is",window_count)

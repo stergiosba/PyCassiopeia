@@ -6,6 +6,7 @@ Contains all calculation features and I/O Controls.
 @author: stergios
 """
 import os
+import sys
 import time
 import numpy as np
 import json
@@ -72,6 +73,12 @@ class Network():
         
         X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3,shuffle=False)#, random_state=0)
         
+        train_df = pd.DataFrame(X_train,columns=X_data.columns)
+        train_df.plot(title="Training Data",colormap = "Paired")
+        test_df = pd.DataFrame(X_test,columns=X_data.columns)
+        test_df.plot(title="Test Data",colormap = "jet")
+        
+        
         plt.figure(1)
         plt.subplot(211)
         plt.title('Training Data')
@@ -96,38 +103,34 @@ class Network():
         (n_x, m) = X_train.shape
         n_y = Y_train.shape[0]
         costs = []
+        
         # Create Placeholders of shape (n_x, n_y)
         X, Y = create_placeholders(n_x, n_y)
         # Initialize parameters
         self.init_layers()
+        
         final = self.forward_propagation(X)
         cost = compute_cost(final, Y)
         optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
+        
         init = tf.global_variables_initializer()
         with tf.Session() as sess:
             # Run the initialization
             sess.run(init)
             # Do the training loop
             for epoch in range(epochs):
-    
-                epoch_cost = 0.                       # Defines a cost related to an epoch
+                # Defines a cost related to an epoch
+                epoch_cost = 0
                 num_minibatches = int(m / minibatch_size) # number of minibatches of size minibatch_size in the train set
                 seed = seed + 1
                 minibatches = random_mini_batches(X_train, Y_train, minibatch_size, seed)
-    
                 for minibatch in minibatches:
-    
                     # Select a minibatch
                     (minibatch_X, minibatch_Y) = minibatch
-                    
-                    # IMPORTANT: The line that runs the graph on a minibatch.
-                    # Run the session to execute the "optimizer" and the "cost", the feedict should contain a minibatch for (X,Y).
-                    ### START CODE HERE ### (1 line)
+                
                     _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
-                    ### END CODE HERE ###
-                    
                     epoch_cost += minibatch_cost / num_minibatches
-    
+                
                 # Print the cost every epoch
                 if self.print_cost == True and epoch % 1 == 0:
                     print("~/CassNN$> Epoch:",epoch,"/",epochs,"~ Cost:",round(epoch_cost,4))
@@ -140,8 +143,11 @@ class Network():
             print("~/CassNN$> Time for training was",round(finish-begin,2),"seconds")
             # Calculate the correct predictions
             correct_prediction = tf.equal(tf.argmax(final), tf.argmax(Y))
+            predictions = sess.run(tf.argmax(final),feed_dict={X: X_data.transpose()})
+            #prediction = tf.argmax(final)
             # Calculate accuracy on the test set
             accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+            print("Acc",sess.run(accuracy,feed_dict = {X: X_train, Y: Y_train}))
             #train_acc = accuracy.eval({X: X_train, Y: Y_train})
             #test_acc = accuracy.eval({X: X_test, Y: Y_test})
             
@@ -149,7 +155,7 @@ class Network():
             print("~/CassNN$> Test Accuracy:", accuracy.eval({X: X_test, Y: Y_test}))
 
         #print(final)
-        return final
+        return predictions
         
     def init_layers(self):
         """
@@ -167,7 +173,6 @@ class Network():
             name_W = "W"+str(layer_counter)
             name_b = "b"+str(layer_counter)
             self.layers[name_W] = tf.get_variable(name_W, [layer[0], layer[1]], initializer = tf.contrib.layers.xavier_initializer(seed=1))
-            print(self.layers[name_W])
             self.layers[name_b] = tf.get_variable(name_b, [layer[0], 1], initializer = tf.zeros_initializer())
             layer_counter+=1
             

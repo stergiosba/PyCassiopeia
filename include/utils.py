@@ -128,7 +128,6 @@ def compute_cost(Z3, Y):
     Returns:
     cost - Tensor of the cost function
     """
-    
     # to fit the tensorflow requirement for tf.nn.softmax_cross_entropy_with_logits(...,...)
     logits = tf.transpose(Z3)
     labels = tf.transpose(Y)
@@ -175,6 +174,6 @@ def random_mini_batches(X, Y, mini_batch_size = 64, seed = 0):
         mini_batch_Y = shuffled_Y[:, num_complete_minibatches * mini_batch_size : m]
         mini_batch = (mini_batch_X, mini_batch_Y)
         mini_batches.append(mini_batch)
-    
+        
     return mini_batches
 

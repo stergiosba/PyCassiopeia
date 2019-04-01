@@ -10,7 +10,7 @@ from tensorflow.python.framework import ops
 from tensorflow import set_random_seed
 import matplotlib.pyplot as plt
 
-def CAS_NN(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
+def CAS_NN(X_data,X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
           num_epochs = 20, minibatch_size = 32, print_cost = True):
     begin = time.time()
     print("~/CassNN$> Starting Neural Training!")
@@ -27,6 +27,7 @@ def CAS_NN(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
 
     # Initialize parameters
     parameters = initialize_parameters(n_x)
+    print(parameters["W1"])
     
     # Forward propagation: Build the forward propagation in the tensorflow graph
     Z3 = forward_propagation(X, parameters)
@@ -36,11 +37,19 @@ def CAS_NN(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
     # Backpropagation: Define the tensorflow optimizer. Use an AdamOptimizer.
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
     
+    cost_tf = tf.get_variable('cost', shape=[], initializer=tf.truncated_normal_initializer(mean=-1, stddev=0))
+    cost_summary = tf.summary.scalar(name='Cost_summary', tensor=cost_tf)
+    
+    w1_summary = tf.summary.histogram('W1_summary', parameters["W1"])
+    w2_summary = tf.summary.histogram('W2_summary', parameters["W2"])
+    w3_summary = tf.summary.histogram('W3_summary', parameters["W3"])
+    #z3_summary = tf.summary.histogram('Z3_summary', Z3)
+    merged = tf.summary.merge_all()
     # Initialize all the variables
     init = tf.global_variables_initializer()
-
     # Start the session to compute the tensorflow graph
     with tf.Session() as sess:
+        writer = tf.summary.FileWriter("output", sess.graph)
         
         # Run the initialization
         sess.run(init)
@@ -65,6 +74,9 @@ def CAS_NN(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
                 ### END CODE HERE ###
                 
                 epoch_cost += minibatch_cost / num_minibatches
+            summary = sess.run(merged)
+            writer.add_summary(summary, epoch)
+
 
             # Print the cost every epoch
             if print_cost == True and epoch % 1 == 0:
@@ -73,7 +85,7 @@ def CAS_NN(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
                 costs.append(epoch_cost)
             #if 
             #    [==============================]
-                
+            #writer.add_summary(cost_summary, epoch)
         # plot the cost
         """
         costs_ax = plt.plot()
@@ -91,7 +103,7 @@ def CAS_NN(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
         print("~/CassNN$> Time for training was",round(finish-begin,2),"seconds")
         # Calculate the correct predictions
         correct_prediction = tf.equal(tf.argmax(Z3), tf.argmax(Y))
-
+        predictions = sess.run(tf.argmax(Z3),feed_dict={X: X_data})
         # Calculate accuracy on the test set
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
         train_acc = accuracy.eval({X: X_train, Y: Y_train})
@@ -99,5 +111,5 @@ def CAS_NN(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
         
         print("~/CassNN$> Train Accuracy:", accuracy.eval({X: X_train, Y: Y_train}))
         print("~/CassNN$> Test Accuracy:", accuracy.eval({X: X_test, Y: Y_test}))
-        
-        return (parameters,train_acc,test_acc)
+        writer.close()
+        return (parameters,train_acc,test_acc,predictions)
