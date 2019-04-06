@@ -65,7 +65,6 @@ class Network():
     def train(self,pd_dataframe,learning_rate,epochs,minibatch_size):
         begin = time.time()
         X_data = pd_dataframe.drop(["LABEL"],axis=1)
-        #X_data.plot()
         X = X_data.values
         Y_data = pd_dataframe.iloc[:,:1]
         Y = Y_data.values
@@ -74,22 +73,36 @@ class Network():
         X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3,shuffle=False)#, random_state=0)
         
         train_df = pd.DataFrame(X_train,columns=X_data.columns)
-        train_df.plot(title="Training Data",colormap = "Paired")
+        train_acc_df = train_df[["A_AVE"]]
+        train_speed_df = train_df.drop(['A_AVE'],axis=1).values
+        #train_df.plot(title="Training Data",colormap = "Paired")
         test_df = pd.DataFrame(X_test,columns=X_data.columns)
-        test_df.plot(title="Test Data",colormap = "jet")
+        #test_df.plot(title="Test Data",colormap = "jet")
+        test_acc_df = test_df[['A_AVE']]
+        test_speed_df = test_df.drop(['A_AVE'],axis=1).values
         
         
         plt.figure(1)
         plt.subplot(211)
         plt.title('Training Data')
         t1 = np.arange(0.0, X_train.shape[0], 1)
-        plt.plot(t1, X_train, marker='.')
-
+        plt.plot(t1, train_speed_df, marker='.')
         plt.subplot(212)
-        plt.title('Testing Data')
+        plt.title('Training Data ACC')
         t2 = np.arange(0.0, X_test.shape[0], 1)
-        plt.plot(t2, X_test, marker='.')
+        plt.plot(t1, train_acc_df, marker='.')
+        
+        plt.figure(2)
+        plt.subplot(211)
+        plt.title('Testing Data')
+        t1 = np.arange(0.0, X_train.shape[0], 1)
+        plt.plot(t2, test_speed_df, marker='.')
+        plt.subplot(212)
+        plt.title('Testing Data ACC')
+        t2 = np.arange(0.0, X_test.shape[0], 1)
+        plt.plot(t2, test_acc_df, marker='.')
         plt.show()
+        
 
         
         X_train = X_train.transpose()
@@ -143,11 +156,12 @@ class Network():
             print("~/CassNN$> Time for training was",round(finish-begin,2),"seconds")
             # Calculate the correct predictions
             correct_prediction = tf.equal(tf.argmax(final), tf.argmax(Y))
-            predictions = sess.run(tf.argmax(final),feed_dict={X: X_data.transpose()})
+            predictions_train = sess.run(tf.argmax(final),feed_dict={X: X_train})
+            predictions_test = sess.run(tf.argmax(final),feed_dict={X: X_test})
+            predictions = np.concatenate((predictions_train,predictions_test),axis=0)
             #prediction = tf.argmax(final)
             # Calculate accuracy on the test set
             accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-            print("Acc",sess.run(accuracy,feed_dict = {X: X_train, Y: Y_train}))
             #train_acc = accuracy.eval({X: X_train, Y: Y_train})
             #test_acc = accuracy.eval({X: X_test, Y: Y_test})
             
@@ -155,6 +169,7 @@ class Network():
             print("~/CassNN$> Test Accuracy:", accuracy.eval({X: X_test, Y: Y_test}))
 
         #print(final)
+        #return predictions_train,predictions_test
         return predictions
         
     def init_layers(self):
@@ -193,6 +208,8 @@ class Network():
             layer_counter+=1
         
         return A[-1]
+        
+    #def evaluate():
         
                 
                 

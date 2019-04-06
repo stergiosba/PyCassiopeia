@@ -1,6 +1,7 @@
 from include import *
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import tensorflow as tf
 from numpy.random import seed
 from tensorflow import set_random_seed
@@ -29,7 +30,7 @@ for i in window_sizes:
                 print("~$> Model Window Size:",window_settings[0])
                 print("~$> Model Window Step:",window_settings[1])
                 data_dir = os.getcwd()+"/data"
-                fit_df = dataProcess(data_dir,model_path,features_list,measurements,window_settings)
+                (fit_df,full_df)= dataProcess(data_dir,model_path,features_list,measurements,window_settings)
             else:
                 print("~$> Loading Model")
                 print("~$> Model Window Size:",window_settings[0])
@@ -38,7 +39,22 @@ for i in window_sizes:
             class_names = ['Deceleration', 'Acceleration', 'Steady']
             
             NN_DC = Network(np.array([[120,6],[100,120],[3,100]]))
-            final_predictions = NN_DC.train(fit_df,learning_rate=0.0001,epochs=30,minibatch_size=16)
+            final_predictions = NN_DC.train(fit_df,learning_rate=0.0001,epochs=3,minibatch_size=16)
+            fit_df['PRED_LABEL'] = final_predictions
+            fit_df = fit_df.tail(1500)
+            fit_df = fit_df.reset_index(drop=True)
+            fig = plt.figure()
+            plot_feat = 'N_AVE'
+            #ax = fit_df['N_MAX'].plot()
+            ax = fit_df[plot_feat].plot()
+            for i in range(len(fit_df)):
+                y = fit_df[plot_feat][i]
+                if (fit_df['LABEL'][i] == fit_df['PRED_LABEL'][i]):
+                    ax.text(i, y, str(fit_df['PRED_LABEL'][i]),bbox=dict(facecolor='green', alpha=0.5))
+                else:
+                    ax.text(i, y, str(fit_df['PRED_LABEL'][i]),bbox=dict(facecolor='red', alpha=0.5))
+            
+
             """
             X_data = fit_df.drop(["LABEL"],axis=1)
             X = X_data.values

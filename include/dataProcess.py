@@ -43,4 +43,4 @@ def dataProcess(_path,_model_path,_features_list,_measurements,_window_settings)
     print(50*"-")
     print("~$> Time for data process was",round(finish-begin,2),"seconds.")
     print(50*"-")
-    return fit_df 
+    return (fit_df,full_df)

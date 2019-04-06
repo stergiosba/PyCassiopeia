@@ -34,9 +34,9 @@ def normDf(df):
     return pd.DataFrame(data=d)
     
 def labelMaker(val):
-    if val == 1:
+    if val == 0:
         return [1, 0, 0]
-    elif val == 2:
+    elif val == 1:
         return [0, 1, 0]
     else: 
         return [0, 0, 1]

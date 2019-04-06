@@ -55,11 +55,11 @@ def windowMaker(_data_df,_fit_df,__measurements,__window_settings,_csv_flag,__mo
             prev_ave_win_acc = ave_win_acc
         else:
             if (ave_win_acc-prev_ave_win_acc)<-0.05:
-                label = 1 #Decel
+                label = 0 #Decel
             elif (ave_win_acc-prev_ave_win_acc)>0.05:
-                label = 2 #Accel
+                label = 1 #Accel
             else:
-                label = 3 #Steady
+                label = 2 #Steady
         #del acc_list
         _fit_df = _fit_df.append({
             'LABEL': label,
