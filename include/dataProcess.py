@@ -5,7 +5,6 @@ Created on Wed Feb 27 13:38:34 2019
 
 @author: stergios
 """
-import time
 import os
 import pandas as pd
 from numpy.random import seed
@@ -14,7 +13,6 @@ from .utils import nullDf, normDf
 seed(1)
 
 def dataProcess(_path,_model_path,_features_list,_measurements,_window_settings):
-    begin = time.time()
     print(50*"-")
     print("~$> Initializing Data Processing")
     print(50*"-")
@@ -33,14 +31,6 @@ def dataProcess(_path,_model_path,_features_list,_measurements,_window_settings)
     full_df.plot()
     fit_df = pd.DataFrame(columns = _features_list)
     print("~$> Datas for",full_df.shape[0],"seconds.")
-    #data_df = full_df.head(120000)
-    #data_df = full_df.head(full_df.shape[0])
-    #print(data_df)
-    csv_flag = True
-    fit_df = windowMaker(full_df, fit_df, _measurements, _window_settings, csv_flag, _model_path)
-
-    finish = time.time()
-    print(50*"-")
-    print("~$> Time for data process was",round(finish-begin,2),"seconds.")
-    print(50*"-")
+    fit_df = windowMaker(full_df, fit_df, _measurements, _window_settings, _model_path)
+    
     return (fit_df,full_df)

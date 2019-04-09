@@ -11,6 +11,19 @@ from sklearn import preprocessing
 import numpy as np
 import math
 
+def windowUnits(max_length,size,step):
+    position = 0
+    counter = 0
+    for i in range(0,max_length,step):
+        if i==0:
+            position+=size
+        else:
+            position+=step
+            if position>max_length:
+                break
+        counter+=1
+    return counter
+
 def nullDf(df,_measurements):
     for measurement in _measurements:
         print("~$> Calculated",df[df[measurement].isnull()].size,"missing datapoints.")

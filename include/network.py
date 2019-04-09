@@ -62,7 +62,7 @@ class Network():
         b_new = json.loads(obj_text)
         self.structure = np.array(b_new["network_structure"])
     
-    def train(self,pd_dataframe,learning_rate,epochs,minibatch_size):
+    def train(self,pd_dataframe,learning_rate,epochs,minibatch_size,plot_flag=False):
         begin = time.time()
         X_data = pd_dataframe.drop(["LABEL"],axis=1)
         X = X_data.values
@@ -81,27 +81,27 @@ class Network():
         test_acc_df = test_df[['A_AVE']]
         test_speed_df = test_df.drop(['A_AVE'],axis=1).values
         
-        
-        plt.figure(1)
-        plt.subplot(211)
-        plt.title('Training Data')
-        t1 = np.arange(0.0, X_train.shape[0], 1)
-        plt.plot(t1, train_speed_df, marker='.')
-        plt.subplot(212)
-        plt.title('Training Data ACC')
-        t2 = np.arange(0.0, X_test.shape[0], 1)
-        plt.plot(t1, train_acc_df, marker='.')
-        
-        plt.figure(2)
-        plt.subplot(211)
-        plt.title('Testing Data')
-        t1 = np.arange(0.0, X_train.shape[0], 1)
-        plt.plot(t2, test_speed_df, marker='.')
-        plt.subplot(212)
-        plt.title('Testing Data ACC')
-        t2 = np.arange(0.0, X_test.shape[0], 1)
-        plt.plot(t2, test_acc_df, marker='.')
-        plt.show()
+        if plot_flag:
+            plt.figure(1)
+            plt.subplot(211)
+            plt.title('Training Data')
+            t1 = np.arange(0.0, X_train.shape[0], 1)
+            plt.plot(t1, train_speed_df, marker='.')
+            plt.subplot(212)
+            plt.title('Training Data ACC')
+            t2 = np.arange(0.0, X_test.shape[0], 1)
+            plt.plot(t1, train_acc_df, marker='.')
+            
+            plt.figure(2)
+            plt.subplot(211)
+            plt.title('Testing Data')
+            t1 = np.arange(0.0, X_train.shape[0], 1)
+            plt.plot(t2, test_speed_df, marker='.')
+            plt.subplot(212)
+            plt.title('Testing Data ACC')
+            t2 = np.arange(0.0, X_test.shape[0], 1)
+            plt.plot(t2, test_acc_df, marker='.')
+            plt.show()
         
 
         
@@ -208,8 +208,91 @@ class Network():
             layer_counter+=1
         
         return A[-1]
+    '''
+    def inference(self,pd_dataframe):
+        print("Inference")
+        begin = time.time()
+        X_data = pd_dataframe#.drop(["LABEL"],axis=1)
+        X_inf = X_data.values
+        #Y_data = pd_dataframe.iloc[:,:1]
+        #Y = Y_data.values
+        #Y = np.array([labelMaker(i[0]) for i in Y])
         
-    #def evaluate():
+        inf_df = pd.DataFrame(X_inf,columns=X_data.columns)
+        inf_acc_df = inf_df[["A_AVE"]]
+        inf_speed_df = inf_df.drop(['A_AVE'],axis=1).values
+           
+        plt.figure(1)
+        plt.subplot(211)
+        plt.title('Inference Speed')
+        t1 = np.arange(0.0, X_inf.shape[0], 1)
+        plt.plot(t1, inf_speed_df, marker='.')
+        plt.subplot(212)
+        plt.title('Inference Acceleration')
+        plt.plot(t1, inf_acc_df, marker='.')
+        
+        X_inf = X_inf.transpose()
+        
+        ops.reset_default_graph()
+        tf.set_random_seed(1)
+        seed = 3
+        (n_x, m) = X_inf.shape
+        n_y = X_inf.shape[0]
+        costs = []
+        
+        # Create Placeholders of shape (n_x, n_y)
+        X, Y = create_placeholders(n_x, n_y)
+        # Initialize parameters
+        self.init_layers()
+        
+        final = self.forward_propagation(X)
+        
+        init = tf.global_variables_initializer()
+        with tf.Session() as sess:
+            # Run the initialization
+            sess.run(init)
+            # Do the training loop
+            for epoch in range(epochs):
+                # Defines a cost related to an epoch
+                epoch_cost = 0
+                num_minibatches = int(m / minibatch_size) # number of minibatches of size minibatch_size in the train set
+                seed = seed + 1
+                minibatches = random_mini_batches(X_train, Y_train, minibatch_size, seed)
+                for minibatch in minibatches:
+                    # Select a minibatch
+                    (minibatch_X, minibatch_Y) = minibatch
+                
+                    _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
+                    epoch_cost += minibatch_cost / num_minibatches
+                
+                # Print the cost every epoch
+                if self.print_cost == True and epoch % 1 == 0:
+                    print("~/CassNN$> Epoch:",epoch,"/",epochs,"~ Cost:",round(epoch_cost,4))
+                if self.print_cost == True and epoch % 1 == 0:
+                    costs.append(epoch_cost)
+            # lets save the parameters in a variable
+            self.layers = sess.run(self.layers)
+            print("~/CassNN$> Finished Neural Training!")
+            finish = time.time()
+            print("~/CassNN$> Time for training was",round(finish-begin,2),"seconds")
+            # Calculate the correct predictions
+            correct_prediction = tf.equal(tf.argmax(final), tf.argmax(Y))
+            predictions_train = sess.run(tf.argmax(final),feed_dict={X: X_train})
+            predictions_test = sess.run(tf.argmax(final),feed_dict={X: X_test})
+            predictions = np.concatenate((predictions_train,predictions_test),axis=0)
+            #prediction = tf.argmax(final)
+            # Calculate accuracy on the test set
+            accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+            #train_acc = accuracy.eval({X: X_train, Y: Y_train})
+            #test_acc = accuracy.eval({X: X_test, Y: Y_test})
+            
+            print("~/CassNN$> Train Accuracy:", accuracy.eval({X: X_train, Y: Y_train}))
+            print("~/CassNN$> Test Accuracy:", accuracy.eval({X: X_test, Y: Y_test}))
+
+        #print(final)
+        #return predictions_train,predictions_test
+        return predictions
+    '''
         
                 
                 
