@@ -8,7 +8,8 @@ Created on Wed Feb 27 13:38:34 2019
 import os
 import pandas as pd
 from numpy.random import seed
-from .windowMaker import windowMaker
+from .trendWindow import trendWindow
+from .cycleWindow import cicleWindow
 from .utils import nullDf, normDf
 seed(1)
 
@@ -31,6 +32,6 @@ def dataProcess(_path,_model_path,_features_list,_measurements,_window_settings)
     full_df.plot()
     fit_df = pd.DataFrame(columns = _features_list)
     print("~$> Datas for",full_df.shape[0],"seconds.")
-    fit_df = windowMaker(full_df, fit_df, _measurements, _window_settings, _model_path)
+    fit_df = cicleWindow(full_df, fit_df, _measurements, _window_settings, _model_path)
     
     return (fit_df,full_df)

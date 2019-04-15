@@ -12,10 +12,9 @@ from .utils import windowUnits
 import pandas as pd
 import seaborn as sns
 
-
-def windowMaker(_data_df,_fit_df,__measurements,__window_settings,__model_path,_csv_flag = True):
+def cicleWindow(_data_df,_fit_df,__measurements,__window_settings,__model_path,_csv_flag = True):
     begin = time.time()
-    csv_save_name = 'train_data.csv'
+    csv_save_name = 'templates.csv'
     #exit setting
     w_size = __window_settings[0]
     w_step = __window_settings[1]
@@ -27,14 +26,14 @@ def windowMaker(_data_df,_fit_df,__measurements,__window_settings,__model_path,_
     print("~$> Window step",w_step,"seconds.")
     print(50*"-")
     
-    #Find maximum count of correct length windows
-    #Maybe add a threshold value for the size (70%)
+    # [Finding maximum count of correct length windows]
+    # TODO Maybe add a threshold value for the size (70%)
     w_count = windowUnits(len(_data_df),w_size,w_step)
      
     w_start = 0
     w_end = w_size
     print("~$> Total Windows Progression")
-    with tqdm(total = w_count,desc = "~$> ") as pbar:
+    with tqdm(total = w_count,desc = "~$> ",unit="win") as pbar:
         for window in range(_data_df.index.min(),_data_df.index.max(),w_step):
             window_df = _data_df[w_start:w_end]
             if len(window_df)!=w_size:
@@ -49,12 +48,12 @@ def windowMaker(_data_df,_fit_df,__measurements,__window_settings,__model_path,_
                     acc_list.append(acc)
             ave_win_acc = sum(acc_list)/len(acc_list)
             if w_start == 0:
-                label = 3 #Starting with Steady
+                label = 2 #Starting with Steady
                 prev_ave_win_acc = ave_win_acc
             else:
-                if (ave_win_acc-prev_ave_win_acc)<-0.05:
+                if (ave_win_acc-prev_ave_win_acc)<-0.02:
                     label = 0 #Decel
-                elif (ave_win_acc-prev_ave_win_acc)>0.05:
+                elif (ave_win_acc-prev_ave_win_acc)>0.02:
                     label = 1 #Accel
                 else:
                     label = 2 #Steady

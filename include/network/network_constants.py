@@ -1,0 +1,2 @@
+TRAINING = "train"
+TESTING = "test"
