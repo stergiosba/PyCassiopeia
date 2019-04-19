@@ -14,7 +14,7 @@ import seaborn as sns
 
 def cicleWindow(_data_df,_fit_df,__measurements,__window_settings,__model_path,_csv_flag = True):
     begin = time.time()
-    csv_save_name = 'templates.csv'
+    csv_save_name = 'train_data.csv'
     #exit setting
     w_size = __window_settings[0]
     w_step = __window_settings[1]

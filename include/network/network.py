@@ -5,11 +5,13 @@ Contains all calculation features and I/O Controls.
 
 @author: stergios
 """
+import json
 import os
+import re
 import sys
 import time
-import json
 import codecs
+
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -19,29 +21,41 @@ import tensorflow as tf
 #from tensorflow.python.framework import ops
 from sklearn.model_selection import train_test_split
 
-from .network_setup import *
-from .network_constants import *
+import include.network.net_constants as netco
+import include.network.net_setup as nets
 #tf.reset_default_graph()   # To clear the defined variables and operations of the previous cell
 # create grap
 
 class Network():
-    def __init__(self,name="Network",save_path=os.getcwd()+"/Network",structure=np.array([]),net_graph=tf.Graph(),export=True):
+    def __init__(self,name,root_path):
         print("~$> Creating Network")
-        self.name = name
-        self.cli_name = "~$/"+self.name+">"
-        self.path = save_path+"/"+self.name
-        self.structure = structure
+        self.name = name 
+        self.root_path = root_path
+        self.version_control()
+        self.cli_name = "~$/"+self.name+"_"+str(self.version)+">"
+        self.version_path = root_path+"/"+self.name+"_"+str(self.version)
+        #self.structure = structure
         self.print_cost = True
-        self.graph = net_graph
+        self.graph = tf.Graph()
         self.layers = {}
-        if export:
-            print(self.cli_name+" Exporting Network Information")
-            #self.layers_export()
             
+    def version_control(self):
+        versions_dir = []
+        for filename in os.listdir(self.root_path):
+            if os.path.isdir(os.path.join(self.root_path,filename)):
+                if re.match(re.escape(self.name),filename):
+                    versions_dir.append(filename)
+        versions_dir = sorted(versions_dir,reverse=True)
+        if versions_dir == []:
+            self.version = 1
+        else:
+            self.version = int(versions_dir[0].split("_")[-1])+1
+        print(versions_dir)
+
     def layers_export(self):
-        if not os.path.exists(self.path):
-            os.makedirs(self.path)
-        with open(self.path+"/info.txt","w") as file:
+        if not os.path.exists(self.version_path):
+            os.makedirs(self.version_path)
+        with open(self.version_path+"/info.txt","w") as file:
             file.write(30*"-"+"\n")
             file.write("Network Structure Information\n")
             file.write(30*"#"+"\n")
@@ -61,18 +75,20 @@ class Network():
                 layer_counter+=1
             file.write(30*"-"+"\n")
         b = self.structure.tolist() # nested lists with same data, indices
-        file_path = self.path+"/exit.json" ## your path variable
+        file_path = self.version_path+"/exit.json" ## your path variable
         json.dump({"network_structure":b}, codecs.open(file_path, 'w', encoding='utf-8'),indent=4)
 
     def layers_import(self,json_path):
+        print(json_path)
         obj_text = codecs.open(json_path, 'r', encoding='utf-8').read()
         b_new = json.loads(obj_text)
-        self.structure = np.array(b_new["network_structure"])
+        self.structure = np.array(b_new["network_structure"],dtype=int)
+        print(type(self.structure[0][0]))
 
     def show_data(self,flag):
         plt.figure(1)
         plt.subplot(211)
-        if flag == TRAINING:
+        if flag == netco.TRAINING:
             time_domain = np.arange(0.0,len(self.train_df),1)
             plt.title('Training Data')
             plt.plot(time_domain, self.train_df.drop(['A_AVE'],axis=1).values, marker='.')
@@ -80,7 +96,7 @@ class Network():
             plt.title('Training Data ACC')
             plt.plot(time_domain, self.train_df[["A_AVE"]], marker='.')
             plt.show()
-        elif flag == TESTING:
+        elif flag == netco.TESTING:
             time_domain = np.arange(0.0,len(self.test_df),1)
             plt.title('Testing Data')
             plt.plot(time_domain, self.test_df.drop(['A_AVE'],axis=1).values, marker='.')
@@ -91,13 +107,13 @@ class Network():
         else:
             print("ERROR BAD DATA FLAG")
     
-    def train(self,pd_dataframe,learning_rate,epochs,minibatch_size):
+    def train(self,pd_dataframe,epochs,learning_rate,minibatch_size):
         begin = time.time()
         X_data = pd_dataframe.drop(["LABEL"],axis=1)
         X = X_data.values
         Y_data = pd_dataframe.iloc[:,:1]
         Y = Y_data.values
-        Y = np.array([labelMaker(i[0]) for i in Y])
+        Y = np.array([nets.labelMaker(i[0]) for i in Y])
         
         X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3,shuffle=False)#, random_state=0)
         
@@ -121,13 +137,13 @@ class Network():
             feature_configs = {'x': tf.FixedLenFeature(shape=[6], dtype=tf.float32),}
             tf_example = tf.parse_example(serialized_tf_example, feature_configs)
             # [Create Placeholders of shape (n_x, n_y)]
-            X, Y = create_placeholders(n_x, n_y)
+            X, Y = nets.create_placeholders(n_x, n_y)
             # [Initialize layer parameters]
             self.init_layers()
             # [Add Forward Propogation to the graph]
             final = self.forward_propagation(X)
             # [Adding cost function for the Adam optimizer to the graph]
-            cost = function_cross_entropy(final, Y)
+            cost = nets.function_cross_entropy(final, Y)
             optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
             init = tf.global_variables_initializer()
             with tf.Session(graph=self.graph) as sess:
@@ -136,9 +152,8 @@ class Network():
                 values, indices = tf.nn.top_k(final, 3)
                 table = tf.contrib.lookup.index_to_string_table_from_tensor(tf.constant([str(i) for i in range(3)]))
                 prediction_classes = table.lookup(tf.to_int64(indices))
-
-                builder = tf.saved_model.builder.SavedModelBuilder(self.path)
-                train_writer = tf.summary.FileWriter(self.path+"/train", sess.graph)
+                builder = tf.saved_model.builder.SavedModelBuilder(self.version_path)
+                train_writer = tf.summary.FileWriter(self.version_path+"/train", sess.graph)
                 # [Training loop]
                 with tqdm(total = epochs,desc = self.cli_name+" ",unit="epo") as pbar:
                     for epoch in range(epochs):
@@ -146,7 +161,7 @@ class Network():
                         epoch_cost = 0
                         num_minibatches = int(m / minibatch_size) # number of minibatches of size minibatch_size in the train set
                         seed = seed + 1
-                        minibatches = random_mini_batches(X_train, Y_train, minibatch_size, seed)
+                        minibatches = nets.random_mini_batches(X_train, Y_train, minibatch_size, seed)
                         for minibatch in minibatches:
                             # [Select a minibatch]
                             (minibatch_X, minibatch_Y) = minibatch
@@ -203,7 +218,6 @@ class Network():
                 finish = time.time()
                 print(self.cli_name+" Time for training was",round(finish-begin,2),"seconds")
 
-                print(final)
                 # [Calculating the correct predictions]
                 correct_prediction = tf.equal(tf.argmax(final), tf.argmax(Y))
                 predictions_train = sess.run(tf.argmax(final),feed_dict={X: X_train})
@@ -262,7 +276,7 @@ class Network():
         #print(self.structure)
         
         with tf.Session(graph=self.graph) as sess:
-            tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING], self.path)
+            tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING], self.version_path)
             W1 = self.graph.get_tensor_by_name("W1:0")
             print(W1)
         print(":ok")

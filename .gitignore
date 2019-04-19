@@ -29,3 +29,5 @@ $RECYCLE.BIN/
 # CSV Files
 *.csv
 
+#Ignore all models
+/models/*

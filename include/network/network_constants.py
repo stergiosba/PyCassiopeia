@@ -1,2 +1,0 @@
-TRAINING = "train"
-TESTING = "test"

@@ -4,7 +4,7 @@
 ======
 
 This is a Machine Learning Project
-Version: Lobster
+Version: Asterion
 
 ## Acknowledgments
 
