@@ -76,7 +76,7 @@ class networksFrame(tk.Frame):
         network_edition_l.place(x=1,y=40)
         self.network_edition = ttk.Combobox(net_canvas,state="readonly")
         self.network_edition['values'] = (netco.TREND,netco.CYCLES)
-        self.network_edition.current(1)
+        self.network_edition.current(0)
         self.network_edition.place(x=111,y=40)
 
         def callback(network_frame):
@@ -112,7 +112,7 @@ class networksFrame(tk.Frame):
         layers_l = tk.Label(net_canvas,text="Layers:",bg=net_canvas['bg'],fg = "#EFB509")
         layers_l.place(x=1,y=80)
         layers = ttk.Combobox(net_canvas,state="readonly")
-        layers['values'] = list(range(1,11))
+        layers['values'] = list(range(1,6))
         layers.current(0)
         layers.place(x=111,y=80)
         
@@ -131,8 +131,7 @@ class networksFrame(tk.Frame):
         _win = structureToplevelGUI(self,layers)
 
     def gen_train_box(self):
-        _win = trainToplevelGUI(self,layers=1)
-
+        _win = trainToplevelGUI(self)
 
     def create_network(self):
         root_path = os.getcwd()+"/models/"+self.network_edition.get()+"/"+self.model.get()
@@ -151,25 +150,44 @@ class structureToplevelGUI(tk.Toplevel):
     def __init__(self,parent,layers):
         tk.Toplevel.__init__(self)
         self.settingsGUI("Network Structure")
-        self.layers = layers
         self.parent = parent
+        self.layers = layers
+        print(self.layers)
         in_label = tk.Label(self,text="In",bg=self['bg'],fg = "#EFB509")
         in_label.grid(row=0,column=0,sticky="nsew")
         out_label = tk.Label(self,text="Out",bg=self['bg'],fg = "#EFB509")
         out_label.grid(row=0,column=1,sticky="nsew")
 
+
+        def limitSize(*args):
+            print("XAXAXXA")
+            values_in= []
+            values_out = []
+            for i in range(len(self.inValues)):
+                values_in.append(self.inValues[i].get())
+                values_out.append(self.outValues[i].get())
+                if len(values_out[i]) > 3:
+                    self.outValues[i].set(values_out[i][:3])
+                if i>0:
+                    self.inValues[i].set(values_out[i-1])
+                if len(values_in[i]) > 3:
+                    self.inValues[i].set(values_in[i][:3])
+                
         self.inValues = []
         self.outValues = []
         for i in range(layers):
             self.inValues.append(tk.StringVar())
-            self.outValues.append(tk.StringVar())
-            self.inValues[i].trace('w', self.limitSize)
-            self.outValues[i].trace('w', self.limitSize)
-            entry_1 = tk.Entry(self,text="1",textvariable=self.inValues[i])
-            entry_1.grid(row=i+1,column=0)
-            entry_2 = tk.Entry(self,text="1",textvariable=self.outValues[i])
-            entry_2.grid(row=i+1,column=1)        
+            self.inValues[i].trace('w',limitSize)
+            inEntry1 = tk.Entry(self,textvariable=self.inValues[i])
+            inEntry1.grid(row=i+1,column=0)
 
+        #for i in range(layers):
+            self.outValues.append(tk.StringVar())
+            self.outValues[i].trace('w',limitSize)
+            outEntry1 = tk.Entry(self,textvariable=self.outValues[i])
+            outEntry1.grid(row=i+1,column=1)
+        
+        
         save_button = tk.Button(self,text="Save",command=lambda:self.layers_export())
         save_button.grid(row=layers+1,column=0)
         
@@ -188,22 +206,6 @@ class structureToplevelGUI(tk.Toplevel):
         self.configure(bg="#000000")
         #self.columnconfigure(0,weight=1)
         #self.rowconfigure(0,weight=1)
-
-    def limitSize(self,*args):
-            values_in = []
-            values_out = []
-            for i in range(self.layers):
-                values_in.append(self.inValues[i].get())
-                if i>=1:
-                    values_in[i]=values_out[i-1]
-                    self.inValues[i].set(values_in[i])
-                if len(values_in[i]) > 3:
-                    values_in[i] = values_in[i][:3]
-                    self.inValues[i].set(values_in[i])
-                values_out.append(self.outValues[i].get())
-                if len(values_out[i]) > 3:
-                    values_out[i] = values_out[i][:3]
-                    self.outValues[i].set(values_out[i])
 
     def layers_export(self):
         lista = []
@@ -241,10 +243,9 @@ class structureToplevelGUI(tk.Toplevel):
 
 
 class trainToplevelGUI(tk.Toplevel):
-    def __init__(self,parent,layers):
+    def __init__(self,parent):
         tk.Toplevel.__init__(self)
         self.settingsGUI("Training Setup")
-        self.layers = layers
         self.parent = parent
         _label = tk.Label(self,text="Training Parameters",bg=self['bg'],fg = "#EFB509")
         _label.grid(row=0,column=0,sticky="nsew")
