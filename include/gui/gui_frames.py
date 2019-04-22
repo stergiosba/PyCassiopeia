@@ -178,8 +178,7 @@ class structureToplevelGUI(tk.Toplevel):
             self.inValues[i].trace('w',limitSize)
             inEntry = tk.Entry(self,textvariable=self.inValues[i])
             inEntry.grid(row=i+1,column=0)
-
-        #for i in range(layers):
+            
             self.outValues.append(tk.StringVar())
             self.outValues[i].trace('w',limitSize)
             outEntry = tk.Entry(self,textvariable=self.outValues[i])

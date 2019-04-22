@@ -33,7 +33,7 @@ def trend_windows_execute(window_size,window_step):
         print("Cant Have smaller size than step")
 
 def cycles_windows_execute(window_size,window_step):
-    features_list = ['LABEL','N_MAX','N_MIN','N_AVE','A_MAX','A_AVE','A_STD','D_AVE','ADS','P_N_030','P_N_3050','P_N_70','P_D_12','P_D_23']
+    features_list = ['LABEL','N_MAX','N_MIN','N_AVE','A_MAX','A_AVE','A_STD','D_AVE','D_MAX','ADS','P_N_030','P_N_3050','P_N_5080','P_N_80100','P_D_12','P_D_23']
     if window_size>=window_size:
         model_path = os.getcwd()+"/models/"+netco.CYCLES+"/model"+str(window_size)+"_"+str(window_step)
         if not os.path.exists(model_path):
@@ -45,8 +45,6 @@ def cycles_windows_execute(window_size,window_step):
             fit_df = cycleProcess(data_path,model_path,features_list,window_settings)
     else:
         print("Cant Have smaller size than step")
-
-
 
 '''
 def execute(window_size,window_step):
