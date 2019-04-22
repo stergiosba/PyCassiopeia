@@ -3,7 +3,7 @@
 Code for the Neural Network Class.
 Contains all calculation features and I/O Controls.
 
-@author: stergios
+@author: Khanax
 """
 import json
 import os
@@ -11,7 +11,6 @@ import re
 import sys
 import time
 import codecs
-
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm

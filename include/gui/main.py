@@ -1,7 +1,6 @@
 import os
 import subprocess
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -10,18 +9,17 @@ from numpy.random import seed
 from tensorflow import set_random_seed
 #import matplotlib.animation as animation
 
-from include.dataProcess import dataProcess
+from include.dataProcess import trendProcess, cycleProcess
 from include.network import network
 import include.network.net_constants as netco
 import include.network.net_setup as nets
 
-plt.style.use('ggplot')
 measurements = ['RE_HMI_ECUA_020115']#"PR_air_scav","RE_gov_idx_meas"]
 #window_settings = [500,20] #Window Size, Window Step
 features_list = ['LABEL','N_MAX','N_MIN','N_AVE','N_IN','N_OUT','A_AVE']
-used_features = ['N_MAX','N_MIN','N_AVE','N_IN','N_OUT','A_AVE']
 
 def trend_windows_execute(window_size,window_step):
+    features_list = ['LABEL','N_MAX','N_MIN','N_AVE','N_IN','N_OUT','A_AVE']
     if window_size>=window_size:
         model_path = os.getcwd()+"/models/"+netco.TREND+"/model"+str(window_size)+"_"+str(window_step)
         if not os.path.exists(model_path):
@@ -30,30 +28,21 @@ def trend_windows_execute(window_size,window_step):
             print("~$> Model Window Step:",window_step)
             data_path = os.getcwd()+"/data"
             window_settings = [window_size,window_step]
-            (fit_df,full_df)= dataProcess(data_path,model_path,features_list,measurements,window_settings)
-        else:
-            print("~$> Loading Model")
-            print("~$> Model Window Size:",window_size)
-            print("~$> Model Window Step:",window_step)
-            fit_df = pd.read_csv(model_path+"/train_data.csv",usecols=features_list)
+            (fit_df,full_df)= trendProcess(data_path,model_path,features_list,measurements,window_settings)
     else:
         print("Cant Have smaller size than step")
 
 def cycles_windows_execute(window_size,window_step):
+    features_list = ['LABEL','N_MAX','N_MIN','N_AVE','A_MAX','A_AVE','A_STD','D_AVE','ADS','P_N_030','P_N_3050','P_N_70','P_D_12','P_D_23']
     if window_size>=window_size:
         model_path = os.getcwd()+"/models/"+netco.CYCLES+"/model"+str(window_size)+"_"+str(window_step)
         if not os.path.exists(model_path):
             print("~$> Creating Model")
             print("~$> Model Window Size:",window_size)
             print("~$> Model Window Step:",window_step)
-            data_path = os.getcwd()+"/data"
+            data_path = os.getcwd()
             window_settings = [window_size,window_step]
-            (fit_df,full_df)= dataProcess(data_path,model_path,features_list,measurements,window_settings)
-        else:
-            print("~$> Loading Model")
-            print("~$> Model Window Size:",window_size)
-            print("~$> Model Window Step:",window_step)
-            fit_df = pd.read_csv(model_path+"/train_data.csv",usecols=features_list)
+            fit_df = cycleProcess(data_path,model_path,features_list,window_settings)
     else:
         print("Cant Have smaller size than step")
 

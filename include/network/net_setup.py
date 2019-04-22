@@ -3,7 +3,7 @@
 """
 Created on Wed Feb 27 13:32:40 2019
 
-@author: stergios
+@author: Khanax
 """
 import math
 

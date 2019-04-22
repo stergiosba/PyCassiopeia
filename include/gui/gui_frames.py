@@ -10,7 +10,6 @@ import include.network.net_constants as netco
 import pandas as pd
 
 features_list = ['LABEL','N_MAX','N_MIN','N_AVE','N_IN','N_OUT','A_AVE']
-
 class cycleFrame(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
@@ -23,14 +22,14 @@ class cycleFrame(tk.Frame):
         cycles_window_size_l = tk.Label(cycles_set_canvas,text="Window Size:",bg=cycles_set_canvas['bg'],fg = "#EFB509")
         cycles_window_size_l.place(x=1,y=40)
         cycles_window_size = ttk.Combobox(cycles_set_canvas,state="readonly")
-        cycles_window_size['values'] = (30,60,90,180)
+        cycles_window_size['values'] = (30,60,90,180,5000)
         cycles_window_size.current(len(cycles_window_size['values'])-1)
         cycles_window_size.place(x=111,y=40)
 
         cycles_window_step_l = tk.Label(cycles_set_canvas,text="Window Step:",bg=cycles_set_canvas['bg'],fg = "#EFB509")
         cycles_window_step_l.place(x=1,y=60)
         cycles_window_step = ttk.Combobox(cycles_set_canvas,state="readonly")
-        cycles_window_step['values'] = (3,5,9,10,20,30)
+        cycles_window_step['values'] = (3,5,9,10,20,30,500)
         cycles_window_step.current(0)
         cycles_window_step.place(x=111,y=60)
 
@@ -139,12 +138,14 @@ class networksFrame(tk.Frame):
         #b_new = json.loads(obj_text)
         #layers_structure = np.array(b_new["network_structure"])
         #print(layers_structure)
-        #if self.network_edition == netco.TREND:
-        self.network = net.Network("NN_DT", root_path)
+        if self.network_edition.get() == netco.TREND: name ="NN_DT"
+        if self.network_edition.get() == netco.CYCLES: name ="NN_EC"
+
+        self.network = net.Network(name, root_path)
+        print(self.network.name)
         #elif self.network_edition == netco.CYCLES:
         #    self.network = net.Network("NN_EC", root_path)
-        self.network.layers_import(root_path+"/exit.json")
-        print(self.network.structure)
+        self.network.layers_import(root_path+"/network_structure.json")
 
 class structureToplevelGUI(tk.Toplevel):
     def __init__(self,parent,layers):
@@ -152,15 +153,12 @@ class structureToplevelGUI(tk.Toplevel):
         self.settingsGUI("Network Structure")
         self.parent = parent
         self.layers = layers
-        print(self.layers)
         in_label = tk.Label(self,text="In",bg=self['bg'],fg = "#EFB509")
         in_label.grid(row=0,column=0,sticky="nsew")
         out_label = tk.Label(self,text="Out",bg=self['bg'],fg = "#EFB509")
         out_label.grid(row=0,column=1,sticky="nsew")
 
-
         def limitSize(*args):
-            print("XAXAXXA")
             values_in= []
             values_out = []
             for i in range(len(self.inValues)):
@@ -178,14 +176,14 @@ class structureToplevelGUI(tk.Toplevel):
         for i in range(layers):
             self.inValues.append(tk.StringVar())
             self.inValues[i].trace('w',limitSize)
-            inEntry1 = tk.Entry(self,textvariable=self.inValues[i])
-            inEntry1.grid(row=i+1,column=0)
+            inEntry = tk.Entry(self,textvariable=self.inValues[i])
+            inEntry.grid(row=i+1,column=0)
 
         #for i in range(layers):
             self.outValues.append(tk.StringVar())
             self.outValues[i].trace('w',limitSize)
-            outEntry1 = tk.Entry(self,textvariable=self.outValues[i])
-            outEntry1.grid(row=i+1,column=1)
+            outEntry = tk.Entry(self,textvariable=self.outValues[i])
+            outEntry.grid(row=i+1,column=1)
         
         
         save_button = tk.Button(self,text="Save",command=lambda:self.layers_export())
@@ -194,7 +192,7 @@ class structureToplevelGUI(tk.Toplevel):
         self.mainloop()
 
     def settingsGUI(self,title,width=400,heigth=400):
-        #self.resizable(False, False)
+        self.resizable(False, False)
         self.title(title)
         self.width = width
         self.height = heigth
@@ -204,8 +202,6 @@ class structureToplevelGUI(tk.Toplevel):
         offset_y = (heigth_sc-heigth)/2
         self.geometry("%dx%d+%d+%d" % (width,heigth,offset_x,offset_y))
         self.configure(bg="#000000")
-        #self.columnconfigure(0,weight=1)
-        #self.rowconfigure(0,weight=1)
 
     def layers_export(self):
         lista = []
@@ -238,9 +234,8 @@ class structureToplevelGUI(tk.Toplevel):
                 layer_counter+=1
             file.write(30*"-"+"\n")
         b = self.structure.tolist() # nested lists with same data, indices
-        file_path = self.version_path+"/exit.json" ## your path variable
+        file_path = self.version_path+"/network_structure.json"
         json.dump({"network_structure":b}, codecs.open(file_path, 'w', encoding='utf-8'),indent=4)
-
 
 class trainToplevelGUI(tk.Toplevel):
     def __init__(self,parent):
@@ -279,7 +274,7 @@ class trainToplevelGUI(tk.Toplevel):
         self.mainloop()
 
     def settingsGUI(self,title,width=400,heigth=200):
-        #self.resizable(False, False)
+        self.resizable(False, False)
         self.title(title)
         self.width = width
         self.height = heigth
@@ -289,7 +284,4 @@ class trainToplevelGUI(tk.Toplevel):
         offset_y = (heigth_sc-heigth)/2
         self.geometry("%dx%d+%d+%d" % (width,heigth,offset_x,offset_y))
         self.configure(bg="#000000")
-        #self.columnconfigure(0,weight=1)
-        #self.rowconfigure(0,weight=1)
-
     

@@ -6,14 +6,19 @@ Created on Wed Feb 27 13:38:34 2019
 @author: stergios
 """
 import os
+
+import matplotlib.pyplot as plt
 import pandas as pd
 from numpy.random import seed
-from .trendWindow import trendWindow
-from .cycleWindow import cicleWindow
-from .utils import nullDf, normDf
-seed(1)
 
-def dataProcess(data_path,model_path,features_list,measurements,window_settings):
+from .utils import nullDf, normDf
+from .trendWindow import trendWindow
+from .cycleWindow import cycleWindow
+
+seed(1)
+plt.style.use('ggplot')
+
+def trendProcess(data_path,model_path,features_list,measurements,window_settings):
     print(50*"-")
     print("~$> Initializing Data Processing")
     print(50*"-")
@@ -32,6 +37,19 @@ def dataProcess(data_path,model_path,features_list,measurements,window_settings)
     full_df.plot()
     fit_df = pd.DataFrame(columns = features_list)
     print("~$> Datas for",full_df.shape[0],"seconds.")
-    fit_df = cicleWindow(full_df, fit_df, measurements, window_settings, model_path)
-    
+    fit_df = trendWindow(full_df, fit_df, measurements, window_settings, model_path)
     return (fit_df,full_df)
+
+def cycleProcess(data_path,model_path,features_list,window_settings):
+    print(50*"-")
+    print("~$> Initializing Data Processing")
+    print(50*"-")
+    full_df = pd.DataFrame(pd.read_csv(data_path+"/output.csv",engine="python").values)
+    print("~$> Loading the dataset from " + data_path)
+    fit_df = pd.DataFrame(columns = features_list)
+    #print("~$> Datas for",full_df.shape[0],"seconds.")
+    fit_df = cycleWindow(full_df, fit_df, window_settings, model_path)
+    print(fit_df)
+    return (fit_df)
+    
+

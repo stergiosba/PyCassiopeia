@@ -15,6 +15,7 @@ class MainApplication(ttk.Notebook):
 
         style.theme_use("yummy")
         self.parent = parent
+        
         trend_tab = trendFrame(self)
         cycle_tab = cycleFrame(self)
 

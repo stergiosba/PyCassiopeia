@@ -12,7 +12,6 @@ from .utils import windowUnits
 import pandas as pd
 import seaborn as sns
 
-#TODO WINDOW FOR THE OTHER CLASSIFIER
 def trendWindow(_data_df,_fit_df,__measurements,__window_settings,__model_path,_csv_flag = True):
     begin = time.time()
     csv_save_name = 'train_data.csv'
@@ -21,14 +20,13 @@ def trendWindow(_data_df,_fit_df,__measurements,__window_settings,__model_path,_
     w_step = __window_settings[1]
     #settings_path = os.path.exists(__model_path+"/"+csv_save_name)
     print(50*"-")
-    print("~$> Initializing Window Making Processing")
+    print("~$> Initializing Window Making Processing for Speed Trend Prediction")
     print(50*"-")
     print("~$> Window size",w_size,"seconds.")
     print("~$> Window step",w_step,"seconds.")
     print(50*"-")
     
     # [Finding maximum count of correct length windows]
-    # TODO Maybe add a threshold value for the size (70%)
     w_count = windowUnits(len(_data_df),w_size,w_step)
      
     w_start = 0
