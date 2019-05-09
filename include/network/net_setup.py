@@ -11,13 +11,14 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-def labelMaker(val):
-    if val == 0:
-        return [1, 0, 0]
-    elif val == 1:
-        return [0, 1, 0]
-    else: 
-        return [0, 0, 1]
+def labelMaker(class_range,val):
+    ret = []
+    for i in range(class_range):
+        if i == val:
+            ret.append(1)
+        else:
+            ret.append(0)
+    return ret
         
 # n_x = num__input_features
 # n_y = expected output (num classes)

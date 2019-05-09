@@ -1,29 +1,30 @@
 import tkinter as tk
 from tkinter import ttk
 from .gui_frames import cycleFrame,trendFrame,networksFrame
+from .gui_themes import GuiTheme
 
 class MainApplication(ttk.Notebook):
     def __init__(self,parent,*args,**kwargs):
+        self.theme = GuiTheme("orange","white")
         ttk.Notebook.__init__(self,parent,*args,**kwargs)
         style = ttk.Style()
         style.theme_create( "yummy", parent="alt", settings={
         "TNotebook": {"configure": {"tabmargins": [2, 5, 2, 0] } },
         "TNotebook.Tab": {
-            "configure": {"padding": [50, 20], "background": "#16253D", "foreground": "#EFB509"},
-            "map":       {"background": [("selected", "#EFB509")],"foreground": [("selected", "#16253D")],
+            "configure": {"padding": [50, 20], "background": self.theme.bg, "foreground": self.theme.fg},
+            "map":       {"background": [("selected", self.theme.selected_bg)],"foreground": [("selected", self.theme.selected_fg)],
                           "expand": [("selected", [1, 1, 1, 0])] } } } )
 
         style.theme_use("yummy")
         self.parent = parent
         
-        trend_tab = trendFrame(self)
         cycle_tab = cycleFrame(self)
-
+        trend_tab = trendFrame(self)
         network_tab = networksFrame(self)
 
-        self.add(trend_tab, text = "Trend Window")
         self.add(cycle_tab, text = "Cycle Window")
-        self.add(network_tab, text = "Network Window")
+        self.add(trend_tab, text = "Trend Window")
+        self.add(network_tab, text = "Network")
 
 class GUI(tk.Tk):
     def __init__(self,title="Cassiopeia Control"):

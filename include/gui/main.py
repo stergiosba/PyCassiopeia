@@ -1,25 +1,20 @@
 import os
-import subprocess
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from sklearn.model_selection import train_test_split
 from numpy.random import seed
 from tensorflow import set_random_seed
 #import matplotlib.animation as animation
 
-from include.dataProcess import trendProcess, cycleProcess
 from include.network import network
 import include.network.net_constants as netco
 import include.network.net_setup as nets
-
-measurements = ['RE_HMI_ECUA_020115']#"PR_air_scav","RE_gov_idx_meas"]
-#window_settings = [500,20] #Window Size, Window Step
-features_list = ['LABEL','N_MAX','N_MIN','N_AVE','N_IN','N_OUT','A_AVE']
+from include.processes import trendProcess, cycleProcess
 
 def trend_windows_execute(window_size,window_step):
-    features_list = ['LABEL','N_MAX','N_MIN','N_AVE','N_IN','N_OUT','A_AVE']
+    measurements = ['RE_HMI_ECUA_020115']#"PR_air_scav","RE_gov_idx_meas"]
+    features_list = netco.TREND_FEATURES
     if window_size>=window_size:
         model_path = os.getcwd()+"/models/"+netco.TREND+"/model"+str(window_size)+"_"+str(window_step)
         if not os.path.exists(model_path):
@@ -28,12 +23,14 @@ def trend_windows_execute(window_size,window_step):
             print("~$> Model Window Step:",window_step)
             data_path = os.getcwd()+"/data"
             window_settings = [window_size,window_step]
-            (fit_df,full_df)= trendProcess(data_path,model_path,features_list,measurements,window_settings)
+            trendProcess(data_path,model_path,features_list,measurements,window_settings)
+        else:
+            print("~$> The Model already exists.")
     else:
         print("Cant Have smaller size than step")
 
 def cycles_windows_execute(window_size,window_step):
-    features_list = ['LABEL','N_MAX','N_MIN','N_AVE','A_MAX','A_AVE','A_STD','D_AVE','D_MAX','ADS','P_N_030','P_N_3050','P_N_5080','P_N_80100','P_D_12','P_D_23']
+    features_list = netco.CYCLES_FEATURES
     if window_size>=window_size:
         model_path = os.getcwd()+"/models/"+netco.CYCLES+"/model"+str(window_size)+"_"+str(window_step)
         if not os.path.exists(model_path):
@@ -42,28 +39,13 @@ def cycles_windows_execute(window_size,window_step):
             print("~$> Model Window Step:",window_step)
             data_path = os.getcwd()
             window_settings = [window_size,window_step]
-            fit_df = cycleProcess(data_path,model_path,features_list,window_settings)
+            cycleProcess(data_path,model_path,features_list,window_settings)
+        else:
+            print("~$> The Model already exists.")
     else:
         print("Cant Have smaller size than step")
 
 '''
-def execute(window_size,window_step):
-    if window_size>=window_size:
-        model_path = os.getcwd()+"/models/model"+str(window_size)+"_"+str(window_step)
-        if not os.path.exists(model_path):
-            print("~$> Creating Model")
-            print("~$> Model Window Size:",window_size)
-            print("~$> Model Window Step:",window_step)
-            data_path = os.getcwd()+"/data"
-            window_settings = [window_size,window_step]
-            (fit_df,full_df)= dataProcess(data_path,model_path,features_list,measurements,window_settings)
-        else:
-            print("~$> Loading Model")
-            print("~$> Model Window Size:",window_size)
-            print("~$> Model Window Step:",window_step)
-            fit_df = pd.read_csv(model_path+"/train_data.csv",usecols=features_list)
-        class_names = ['Deceleration', 'Acceleration', 'Steady']
-        class_names_labels = ['D', 'A', 'S']
         #graph1 = tf.Graph()
         layers_structure = np.array([[120,6],[100,120],[3,100]])
         NN_DC = network.Network("NN_DC", root_path=model_path, structure=layers_structure, net_graph=tf.Graph())

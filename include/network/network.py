@@ -22,6 +22,7 @@ from sklearn.model_selection import train_test_split
 
 import include.network.net_constants as netco
 import include.network.net_setup as nets
+from include.utils import normalizeDataFrame
 #tf.reset_default_graph()   # To clear the defined variables and operations of the previous cell
 # create grap
 
@@ -34,7 +35,6 @@ class Network():
         self.cli_name = "~$/"+self.name+"_"+str(self.version)+">"
         self.version_path = root_path+"/"+self.name+"_"+str(self.version)
         #self.structure = structure
-        self.print_cost = True
         self.graph = tf.Graph()
         self.layers = {}
             
@@ -49,8 +49,7 @@ class Network():
             self.version = 1
         else:
             self.version = int(versions_dir[0].split("_")[-1])+1
-        print(versions_dir)
-
+    #deprecated
     def layers_export(self):
         if not os.path.exists(self.version_path):
             os.makedirs(self.version_path)
@@ -78,11 +77,10 @@ class Network():
         json.dump({"network_structure":b}, codecs.open(file_path, 'w', encoding='utf-8'),indent=4)
 
     def layers_import(self,json_path):
-        print(json_path)
+        print(self.cli_name+" Importing Network Structure from: "+json_path)
         obj_text = codecs.open(json_path, 'r', encoding='utf-8').read()
         b_new = json.loads(obj_text)
         self.structure = np.array(b_new["network_structure"],dtype=int)
-        print(type(self.structure[0][0]))
 
     def show_data(self,flag):
         plt.figure(1)
@@ -106,25 +104,25 @@ class Network():
         else:
             print("ERROR BAD DATA FLAG")
     
-    def train(self,pd_dataframe,epochs,learning_rate,minibatch_size):
+    def train(self,epochs,learning_rate,minibatch_size,edition):
         begin = time.time()
-        X_data = pd_dataframe.drop(["LABEL"],axis=1)
-        X = X_data.values
-        Y_data = pd_dataframe.iloc[:,:1]
-        Y = Y_data.values
-        Y = np.array([nets.labelMaker(i[0]) for i in Y])
+
+        X_data = pd.read_csv(self.root_path+"/"+netco.TRAINING+".csv",usecols=netco.CYCLES_FEATURES)
+        X_data = normalizeDataFrame(X_data)
+        X_train, X_test = train_test_split(X_data, test_size=0.3, shuffle=False)
+        X_train = X_train.sample(frac=1)
+        Y_train = X_train[['LABEL']]
+        Y_test = X_test[['LABEL']]
         
-        X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3,shuffle=False)#, random_state=0)
-        
-        self.train_df = pd.DataFrame(X_train,columns=X_data.columns)
-        self.test_df = pd.DataFrame(X_test,columns=X_data.columns)
-        
+        self.train_df = X_train
+        self.test_df = X_test
         # [Plotting Train and Test Data at the stage of training]
-        
-        X_train = X_train.transpose()
-        X_test = X_test.transpose()
-        Y_train = Y_train.transpose()
-        Y_test = Y_test.transpose()
+        X_train = X_train.drop(["LABEL"],axis=1)
+        X_test = X_test.drop(["LABEL"],axis=1)
+        X_train = X_train.values.transpose()
+        X_test = X_test.values.transpose()
+        Y_train = np.array([nets.labelMaker(int(Y_train.values.max())+1,i[0]) for i in Y_train.values]).transpose()
+        Y_test = np.array([nets.labelMaker(int(Y_test.values.max())+1,i[0]) for i in Y_test.values]).transpose()
         with self.graph.as_default():
             tf.set_random_seed(1)
             #ops.reset_default_graph()
@@ -133,7 +131,7 @@ class Network():
             n_y = Y_train.shape[0]
             costs = []
             serialized_tf_example = tf.placeholder(tf.string, name='tf_example')
-            feature_configs = {'x': tf.FixedLenFeature(shape=[6], dtype=tf.float32),}
+            feature_configs = {'x': tf.FixedLenFeature(shape=[n_y], dtype=tf.float32),}
             tf_example = tf.parse_example(serialized_tf_example, feature_configs)
             # [Create Placeholders of shape (n_x, n_y)]
             X, Y = nets.create_placeholders(n_x, n_y)
@@ -148,8 +146,8 @@ class Network():
             with tf.Session(graph=self.graph) as sess:
                 # [Session Initialization]
                 sess.run(init)
-                values, indices = tf.nn.top_k(final, 3)
-                table = tf.contrib.lookup.index_to_string_table_from_tensor(tf.constant([str(i) for i in range(3)]))
+                values, indices = tf.nn.top_k(final, n_y)
+                table = tf.contrib.lookup.index_to_string_table_from_tensor(tf.constant([str(i) for i in range(n_y)]))
                 prediction_classes = table.lookup(tf.to_int64(indices))
                 builder = tf.saved_model.builder.SavedModelBuilder(self.version_path)
                 train_writer = tf.summary.FileWriter(self.version_path+"/train", sess.graph)
@@ -169,10 +167,9 @@ class Network():
                             epoch_cost += minibatch_cost / num_minibatches
                         
                         # [Print progress and the cost every epoch]
-                        if self.print_cost == True and epoch % 1 == 0:
+                        if epoch % 1 == 0:
                             pbar.update(n=1)
                             print(" ~ Cost:",round(epoch_cost,4))
-                        if self.print_cost == True and epoch % 1 == 0:
                             costs.append(epoch_cost)
 
                 # [Saving the parameters in a variable]
@@ -182,7 +179,6 @@ class Network():
                 classification_inputs = tf.saved_model.utils.build_tensor_info(serialized_tf_example)
                 classification_outputs_classes = tf.saved_model.utils.build_tensor_info(prediction_classes)
                 classification_outputs_scores = tf.saved_model.utils.build_tensor_info(values)
-
 
                 classification_signature = (tf.saved_model.signature_def_utils.build_signature_def(
                     inputs={
@@ -219,16 +215,16 @@ class Network():
 
                 # [Calculating the correct predictions]
                 correct_prediction = tf.equal(tf.argmax(final), tf.argmax(Y))
-                predictions_train = sess.run(tf.argmax(final),feed_dict={X: X_train})
-                predictions_test = sess.run(tf.argmax(final),feed_dict={X: X_test})
-                predictions = np.concatenate((predictions_train,predictions_test),axis=0)
+                self.predictions_train = sess.run(tf.argmax(final),feed_dict={X: X_train})
+                self.predictions_test = sess.run(tf.argmax(final),feed_dict={X: X_test})
+                self.predictions = np.concatenate((self.predictions_train,self.predictions_test),axis=0)
                 tf.summary.histogram("predictions", final)
                 # [Calculate accuracy on the test set]
                 accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
                 print(self.cli_name+" Train Accuracy:", accuracy.eval({X: X_train, Y: Y_train}))
                 print(self.cli_name+" Test Accuracy:", accuracy.eval({X: X_test, Y: Y_test}))
 
-        return predictions
+        return self.predictions
         
     def init_layers(self):
         """
@@ -264,11 +260,46 @@ class Network():
             else:
                 # [All hidden layers - TANH]
                 Z.append(tf.add(tf.matmul(self.layers["W"+str(layer_counter)], A[layer_counter-1]), self.layers["b"+str(layer_counter)]))
-                A.append(tf.nn.tanh(Z[layer_counter-1]))
+                A.append(tf.nn.sigmoid(Z[layer_counter-1]))
             layer_counter+=1
         # [Return last layer]
-
         return A[-1]
+
+    def export_predictions(self,start,end):
+        full_df = pd.read_csv(os.getcwd()+"/templates.csv", header=None, engine="python").T
+        self.test_df['PRED_LABEL'] = self.predictions_test
+        show_df = self.test_df[start:end]
+        show_df = show_df.reset_index()
+        fig = plt.figure(3)
+        plt.title('test')
+        plt.ylim(0, 1)
+        plot_feat = 'N_MAX'
+        ax = show_df[plot_feat].plot()
+        for i in range(len(show_df)):
+            y = show_df[plot_feat][i]
+            label = str(show_df['LABEL'][i])+"/"+str(show_df['PRED_LABEL'][i])
+            if (show_df['LABEL'][i] == show_df['PRED_LABEL'][i]):
+                ax.text(i, y, label,bbox=dict(facecolor='green', alpha=0.5))
+            else:
+                ax.text(i, y, label,bbox=dict(facecolor='red', alpha=0.5))
+
+        self.test_df['PRED_LABEL'] = self.predictions_test
+        show1_df = self.test_df[start:end]
+        show1_df = show1_df.reset_index()
+        fig1 = plt.figure(4)
+        plt.title('train')
+        plt.ylim(0, 1)
+        plot_feat = 'N_MAX'
+        ax = show1_df[plot_feat].plot()
+        for i in range(len(show1_df)):
+            if (show1_df['LABEL'][i] == show1_df['PRED_LABEL'][i]):
+                ax.text(i, 0.8, show1_df['LABEL'][i],bbox=dict(facecolor='green', alpha=0.5))
+                ax.text(i, 0.6, show1_df['PRED_LABEL'][i],bbox=dict(facecolor='green', alpha=0.5))
+            else:
+                ax.text(i, 0.8, show1_df['LABEL'][i],bbox=dict(facecolor='red', alpha=0.5))
+                ax.text(i, 0.6, show1_df['PRED_LABEL'][i],bbox=dict(facecolor='red', alpha=0.5))
+        plt.show()
+        
 
     def inference(self):#,pd_dataframe):
         #self.layers_import(self.path+"/exit.json")

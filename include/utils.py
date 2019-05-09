@@ -6,12 +6,13 @@ Created on Thu Feb 28 13:32:50 2019
 """
 import pandas as pd
 from sklearn import preprocessing
-#from tensorflow import set_random_seed
 import numpy as np
 import math
 
-#TODO CLEAN THIS FILE UP AND ADD COMMENTS
+EPS = 1.0e-6
+MAX_NULL = 1.0e5
 
+# [Mathematical solution for proper window sizes]
 def windowUnits(max_length,size,step):
     position = 0
     counter = 0
@@ -25,10 +26,11 @@ def windowUnits(max_length,size,step):
         counter+=1
     return counter
 
-def nullDf(df,_measurements):
+# [Fixing all null data from Dataframe]
+def fixNullDataFrame(df,_measurements):
     for measurement in _measurements:
         print("~$> Calculated",df[df[measurement].isnull()].size,"missing datapoints.")
-        if df[df[measurement].isnull()].size >10000:
+        if df[df[measurement].isnull()].size >MAX_NULL:
             print("~$> Dataframe is missing to many data")
         if 0 in df[df[measurement].isnull()].index:
             df[measurement][0] = 0
@@ -36,14 +38,18 @@ def nullDf(df,_measurements):
             df[measurement][i] = df[measurement][i-1]
         print("~$> All missing datapoints have been restored")
     return df
-    
-def normDf(df):
+
+# [Normalizing Datagrame Columns except for LABEL column]    
+def normalizeDataFrame(df):
     print("~$> Normalizing Dataframe")
     d = {}
     min_max_scaler = preprocessing.MinMaxScaler()
+    saved_labels = df[['LABEL']]
     x_scaled = min_max_scaler.fit_transform(df.values)
     for i in range(len(df.columns)):
         d[df.columns[i]]=x_scaled[:,i]
     print("~$> Dataframe has been normalized")
-    return pd.DataFrame(data=d)
+    final_df = pd.DataFrame(data=d)
+    final_df['LABEL'] = saved_labels
+    return final_df
 

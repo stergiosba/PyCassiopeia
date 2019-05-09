@@ -9,50 +9,51 @@ import include.network.network as net
 import include.network.net_constants as netco
 import pandas as pd
 
-features_list = ['LABEL','N_MAX','N_MIN','N_AVE','N_IN','N_OUT','A_AVE']
 class cycleFrame(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         grandparent = parent.parent
-        cycles_set_canvas = tk.Canvas(self,bg="#16253D",width = grandparent.width,height=grandparent.height)
+        cycles_set_canvas = tk.Canvas(self,bg=parent.theme.selected_bg,width=grandparent.width,height=grandparent.height)
         cycles_set_canvas.grid(row=0,column=0)
-        label = tk.Label(cycles_set_canvas,text="Engine Cycles Window Settings",bg=cycles_set_canvas['bg'],fg = "#EFB509")
+        label = tk.Label(cycles_set_canvas,text="Engine Cycles Window Settings",bg=cycles_set_canvas['bg'],fg=parent.theme.selected_fg)
         label.place(x=1,y=10)
 
-        cycles_window_size_l = tk.Label(cycles_set_canvas,text="Window Size:",bg=cycles_set_canvas['bg'],fg = "#EFB509")
+        cycles_window_size_l = tk.Label(cycles_set_canvas,text="Window Size:",bg=cycles_set_canvas['bg'],fg=parent.theme.selected_fg)
         cycles_window_size_l.place(x=1,y=40)
         cycles_window_size = ttk.Combobox(cycles_set_canvas,state="readonly")
-        cycles_window_size['values'] = (30,60,90,180,5000)
+        cycles_window_size['values'] = (30,60,90,180,360)
         cycles_window_size.current(len(cycles_window_size['values'])-1)
         cycles_window_size.place(x=111,y=40)
 
-        cycles_window_step_l = tk.Label(cycles_set_canvas,text="Window Step:",bg=cycles_set_canvas['bg'],fg = "#EFB509")
+        cycles_window_step_l = tk.Label(cycles_set_canvas,text="Window Step:",bg=cycles_set_canvas['bg'],fg=parent.theme.selected_fg)
         cycles_window_step_l.place(x=1,y=60)
         cycles_window_step = ttk.Combobox(cycles_set_canvas,state="readonly")
-        cycles_window_step['values'] = (3,5,9,10,20,30,500)
+        cycles_window_step['values'] = (1,3,5,9,10,20)
         cycles_window_step.current(0)
         cycles_window_step.place(x=111,y=60)
 
         cycle_ex_button = tk.Button(cycles_set_canvas,text="Execute",command=lambda:cycles_windows_execute(int(cycles_window_size.get()),int(cycles_window_step.get())))
+        cycle_ex_button['bg'] = parent.theme.bg
+        cycle_ex_button['fg'] = parent.theme.fg
         cycle_ex_button.place(x=251,y=200)
 
 class trendFrame(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         grandparent = parent.parent
-        trend_set_canvas = tk.Canvas(self,bg="#16253D",width = grandparent.width,height=grandparent.height)
+        trend_set_canvas = tk.Canvas(self,bg=parent.theme.selected_bg,width = grandparent.width,height=grandparent.height)
         trend_set_canvas.grid(row=0,column=0)
-        label = tk.Label(trend_set_canvas,text="Speed Trend Window Settings",bg=trend_set_canvas['bg'],fg = "#EFB509")
+        label = tk.Label(trend_set_canvas,text="Speed Trend Window Settings",bg=trend_set_canvas['bg'],fg = parent.theme.selected_fg)
         label.place(x=1,y=10)
 
-        trend_window_size_l = tk.Label(trend_set_canvas,text="Window Size:",bg=trend_set_canvas['bg'],fg = "#EFB509")
+        trend_window_size_l = tk.Label(trend_set_canvas,text="Window Size:",bg=trend_set_canvas['bg'],fg = parent.theme.selected_fg)
         trend_window_size_l.place(x=1,y=40)
         trend_window_size = ttk.Combobox(trend_set_canvas,state="readonly")
         trend_window_size['values'] = (30,60,90,180)
         trend_window_size.current(len(trend_window_size['values'])-1)
         trend_window_size.place(x=111,y=40)
 
-        trend_window_step_l = tk.Label(trend_set_canvas,text="Window Step:",bg=trend_set_canvas['bg'],fg = "#EFB509")
+        trend_window_step_l = tk.Label(trend_set_canvas,text="Window Step:",bg=trend_set_canvas['bg'],fg = parent.theme.selected_fg)
         trend_window_step_l.place(x=1,y=60)
         trend_window_step = ttk.Combobox(trend_set_canvas,state="readonly")
         trend_window_step['values'] = (3,5,9,10,20,30)
@@ -60,18 +61,22 @@ class trendFrame(tk.Frame):
         trend_window_step.place(x=111,y=60)
 
         trend_ex_button = tk.Button(trend_set_canvas,text="Execute",command=lambda:trend_windows_execute(int(trend_window_size.get()),int(trend_window_step.get())))
+        trend_ex_button['bg'] = parent.theme.bg
+        trend_ex_button['fg'] = parent.theme.fg
         trend_ex_button.place(x=251,y=200)
 
 class networksFrame(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         grandparent = parent.parent
-        net_canvas = tk.Canvas(self,bg="#16253D",width = grandparent.width,height=grandparent.height)
+        net_canvas = tk.Canvas(self,bg=parent.theme.selected_bg,width = grandparent.width,height=grandparent.height)
         net_canvas.grid(row=0,column=0)
-        label = tk.Label(net_canvas,text="Neural Network Settings",bg=net_canvas['bg'],fg = "#EFB509")
+
+        # [Network Setup Section]
+        label = tk.Label(net_canvas,text="Neural Network Settings",bg=net_canvas['bg'],fg = parent.theme.selected_fg)
         label.place(x=1,y=10)
 
-        network_edition_l = tk.Label(net_canvas,text="Edition:",bg=net_canvas['bg'],fg = "#EFB509")
+        network_edition_l = tk.Label(net_canvas,text="Edition:",bg=net_canvas['bg'],fg = parent.theme.selected_fg)
         network_edition_l.place(x=1,y=40)
         self.network_edition = ttk.Combobox(net_canvas,state="readonly")
         self.network_edition['values'] = (netco.TREND,netco.CYCLES)
@@ -90,7 +95,7 @@ class networksFrame(tk.Frame):
                 else:
                     network_frame.model['values'] = list(os.listdir(os.getcwd()+"/models/"+netco.CYCLES))
 
-        model_l = tk.Label(net_canvas,text="Model:",bg=net_canvas['bg'],fg = "#EFB509")
+        model_l = tk.Label(net_canvas,text="Model:",bg=net_canvas['bg'],fg = parent.theme.selected_fg)
         model_l.place(x=1,y=60)
         self.model = ttk.Combobox(net_canvas,state="readonly")
         if self.network_edition.get() == netco.TREND:
@@ -108,23 +113,51 @@ class networksFrame(tk.Frame):
         self.model.place(x=111,y=60)
         self.network_edition.bind("<<ComboboxSelected>>", lambda _ : callback(self))
 
-        layers_l = tk.Label(net_canvas,text="Layers:",bg=net_canvas['bg'],fg = "#EFB509")
+        layers_l = tk.Label(net_canvas,text="Layers:",bg=net_canvas['bg'],fg = parent.theme.selected_fg)
         layers_l.place(x=1,y=80)
         layers = ttk.Combobox(net_canvas,state="readonly")
         layers['values'] = list(range(1,6))
         layers.current(0)
         layers.place(x=111,y=80)
         
-        structure_l = tk.Label(net_canvas,text="Structure:",bg=net_canvas['bg'],fg = "#EFB509")
+        # [Structure Section]
+        structure_l = tk.Label(net_canvas,text="Structure:",bg=net_canvas['bg'],fg = parent.theme.selected_fg)
         structure_l.place(x=1,y=100)
         structure_button = tk.Button(net_canvas,text="Edit Structure",command=lambda:self.gen_structure_box(int(layers.get())))
         structure_button.place(x=111,y=100)
 
+        # [Creation Section]
         create_button = tk.Button(net_canvas,text="Create",command=lambda:self.create_network())
+        create_button['bg'] = parent.theme.bg
+        create_button['fg'] = parent.theme.fg
         create_button.place(x=111,y=180)
 
+        # [Train Section]
         train_button = tk.Button(net_canvas,text="Training Setup",command=lambda:self.gen_train_box())
+        train_button['bg'] = parent.theme.bg
+        train_button['fg'] = parent.theme.fg
         train_button.place(x=111,y=220)
+
+        # [Visualization Section]
+        label = tk.Label(net_canvas,text="Visualization Settings",bg=net_canvas['bg'],fg = parent.theme.selected_fg)
+        label.place(x=411,y=10)
+
+        start_l = tk.Label(self,text="Start Point:",bg=net_canvas['bg'],fg = parent.theme.selected_fg)
+        start_l.place(x=411,y=40)
+        start = tk.StringVar()
+        start_entry = tk.Entry(self,textvariable=start)
+        start_entry.place(x=511,y=40)
+
+        end_l = tk.Label(self,text="End Point:",bg=net_canvas['bg'],fg = parent.theme.selected_fg)
+        end_l.place(x=411,y=60)
+        end = tk.StringVar()
+        end_entry = tk.Entry(self,textvariable=end)
+        end_entry.place(x=511,y=60)
+
+        visual_button = tk.Button(net_canvas,text="Visualize",command=lambda:self.network.export_predictions(int(start.get()),int(end.get())))
+        visual_button['bg'] = parent.theme.bg
+        visual_button['fg'] = parent.theme.fg
+        visual_button.place(x=411,y=80)
 
     def gen_structure_box(self,layers):
         _win = structureToplevelGUI(self,layers)
@@ -134,17 +167,9 @@ class networksFrame(tk.Frame):
 
     def create_network(self):
         root_path = os.getcwd()+"/models/"+self.network_edition.get()+"/"+self.model.get()
-        #obj_text = codecs.open(json_path, 'r', encoding='utf-8').read()
-        #b_new = json.loads(obj_text)
-        #layers_structure = np.array(b_new["network_structure"])
-        #print(layers_structure)
-        if self.network_edition.get() == netco.TREND: name ="NN_DT"
-        if self.network_edition.get() == netco.CYCLES: name ="NN_EC"
-
+        if self.network_edition.get() == netco.TREND: name =netco.NN_TREND
+        if self.network_edition.get() == netco.CYCLES: name =netco.NN_CYCLES
         self.network = net.Network(name, root_path)
-        print(self.network.name)
-        #elif self.network_edition == netco.CYCLES:
-        #    self.network = net.Network("NN_EC", root_path)
         self.network.layers_import(root_path+"/network_structure.json")
 
 class structureToplevelGUI(tk.Toplevel):
@@ -184,8 +209,7 @@ class structureToplevelGUI(tk.Toplevel):
             outEntry = tk.Entry(self,textvariable=self.outValues[i])
             outEntry.grid(row=i+1,column=1)
         
-        
-        save_button = tk.Button(self,text="Save",command=lambda:self.layers_export())
+        save_button = tk.Button(self,text="Save",command=lambda:self.save_layers())
         save_button.grid(row=layers+1,column=0)
         
         self.mainloop()
@@ -202,16 +226,13 @@ class structureToplevelGUI(tk.Toplevel):
         self.geometry("%dx%d+%d+%d" % (width,heigth,offset_x,offset_y))
         self.configure(bg="#000000")
 
-    def layers_export(self):
+    def save_layers(self):
         lista = []
         for i in range(self.layers):
             lista.append([self.outValues[i].get(),self.inValues[i].get()])
         self.structure = np.array(lista)
         self.parent.structure = self.structure
-        net_ed = self.parent.network_edition.get()
-        model = self.parent.model.get()
-        self.version_path = os.getcwd()+"/models/"+net_ed+"/"+model
-        print(self.version_path)
+        self.version_path = os.getcwd()+"/models/"+self.parent.network_edition.get()+"/"+self.parent.model.get()
         if not os.path.exists(self.version_path):
             os.makedirs(self.version_path)
         with open(self.version_path+"/info.txt","w") as file:
@@ -247,8 +268,8 @@ class trainToplevelGUI(tk.Toplevel):
         epochs_l = tk.Label(self,text="Epochs:",bg=self['bg'],fg = "#EFB509")
         epochs_l.place(x=1,y=60)
         epochs = ttk.Combobox(self,state="readonly")
-        epochs['values'] = (1,5,10,15,20,30,50,80,100)
-        epochs.current(5)
+        epochs['values'] = (1,5,10,20,50,80,100,200,500,1000,2000)
+        epochs.current(0)
         epochs.place(x=111,y=60)
 
         learning_rate_l = tk.Label(self,text="Learning Rate:",bg=self['bg'],fg = "#EFB509")
@@ -261,14 +282,21 @@ class trainToplevelGUI(tk.Toplevel):
         mini_batch_l = tk.Label(self,text="Minibatch Size:",bg=self['bg'],fg = "#EFB509")
         mini_batch_l.place(x=1,y=100)
         mini_batch = ttk.Combobox(self,state="readonly")
-        mini_batch['values'] = (8,16,32,64)
+        mini_batch['values'] = (32,64,128,256)
         mini_batch.current(0)
         mini_batch.place(x=111,y=100)
 
-        fit_df = pd.read_csv(self.parent.network.root_path+"/train_data.csv",usecols=features_list)
+        if self.parent.network_edition.get() == netco.CYCLES:
+            network_edition = self.parent.network_edition.get()
+            features_list = netco.CYCLES_FEATURES
+
+        if self.parent.network_edition.get() == netco.TREND:
+            network_edition = self.parent.network_edition.get()
+            features_list = netco.TREND_FEATURES
   
-        train_button = tk.Button(self,text="Train",command=lambda:self.parent.network.train(fit_df,int(epochs.get()),float(learning_rate.get()),int(mini_batch.get())))
+        train_button = tk.Button(self,text="Train",command=lambda:self.parent.network.train(int(epochs.get()),float(learning_rate.get()),int(mini_batch.get()),network_edition))
         train_button.place(x=111,y=140)
+        self.bind('<Return>', lambda event:self.parent.network.train(int(epochs.get()),float(learning_rate.get()),int(mini_batch.get()),network_edition))
         
         self.mainloop()
 
@@ -283,4 +311,3 @@ class trainToplevelGUI(tk.Toplevel):
         offset_y = (heigth_sc-heigth)/2
         self.geometry("%dx%d+%d+%d" % (width,heigth,offset_x,offset_y))
         self.configure(bg="#000000")
-    
