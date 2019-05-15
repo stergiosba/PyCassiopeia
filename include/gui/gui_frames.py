@@ -1,13 +1,16 @@
-import numpy as np
 import os
 import json
 import codecs
 import tkinter as tk
-from .main import cycles_windows_execute,trend_windows_execute
 from tkinter import ttk
+
+import numpy as np
+import pandas as pd
+
+from .gui_main import cycles_windows_execute,trend_windows_execute
 import include.network.network as net
 import include.network.net_constants as netco
-import pandas as pd
+
 
 class cycleFrame(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
@@ -120,17 +123,13 @@ class networksFrame(tk.Frame):
         layers.current(0)
         layers.place(x=111,y=80)
         
-        # [Structure Section]
-        structure_l = tk.Label(net_canvas,text="Structure:",bg=net_canvas['bg'],fg = parent.theme.selected_fg)
-        structure_l.place(x=1,y=100)
-        structure_button = tk.Button(net_canvas,text="Edit Structure",command=lambda:self.gen_structure_box(int(layers.get())))
-        structure_button.place(x=111,y=100)
-
-        # [Creation Section]
-        create_button = tk.Button(net_canvas,text="Create",command=lambda:self.create_network())
+        # [Create Section]
+        create_l = tk.Label(net_canvas,text="Structure:",bg=net_canvas['bg'],fg = parent.theme.selected_fg)
+        create_l.place(x=1,y=100)
+        create_button = tk.Button(net_canvas,text="Create Network",command=lambda:self.gen_create_box(int(layers.get())))
         create_button['bg'] = parent.theme.bg
         create_button['fg'] = parent.theme.fg
-        create_button.place(x=111,y=180)
+        create_button.place(x=111,y=100)
 
         # [Train Section]
         train_button = tk.Button(net_canvas,text="Training Setup",command=lambda:self.gen_train_box())
@@ -159,20 +158,21 @@ class networksFrame(tk.Frame):
         visual_button['fg'] = parent.theme.fg
         visual_button.place(x=411,y=80)
 
-    def gen_structure_box(self,layers):
-        _win = structureToplevelGUI(self,layers)
+        inf_button = tk.Button(net_canvas,text="Inference",command=lambda:self.gen_inference_box())
+        inf_button['bg'] = parent.theme.bg
+        inf_button['fg'] = parent.theme.fg
+        inf_button.place(x=411,y=120)
+
+    def gen_create_box(self,layers):
+        _win = creationToplevelGUI(self,layers)
 
     def gen_train_box(self):
         _win = trainToplevelGUI(self)
 
-    def create_network(self):
-        root_path = os.getcwd()+"/models/"+self.network_edition.get()+"/"+self.model.get()
-        if self.network_edition.get() == netco.TREND: name =netco.NN_TREND
-        if self.network_edition.get() == netco.CYCLES: name =netco.NN_CYCLES
-        self.network = net.Network(name, root_path)
-        self.network.layers_import(root_path+"/network_structure.json")
+    def gen_inference_box(self):
+        _win = inferenceToplevelGUI(self)
 
-class structureToplevelGUI(tk.Toplevel):
+class creationToplevelGUI(tk.Toplevel):
     def __init__(self,parent,layers):
         tk.Toplevel.__init__(self)
         self.settingsGUI("Network Structure")
@@ -199,17 +199,29 @@ class structureToplevelGUI(tk.Toplevel):
         self.inValues = []
         self.outValues = []
         for i in range(layers):
-            self.inValues.append(tk.StringVar())
+            if i == 0:
+                if self.parent.network_edition.get() == netco.TREND:
+                    self.inValues.append(tk.StringVar(value=str(len(netco.TREND_FEATURES)-1)))
+                elif self.parent.network_edition.get() == netco.CYCLES:
+                    self.inValues.append(tk.StringVar(value=str(len(netco.CYCLES_FEATURES)-1)))
+            else:
+                self.inValues.append(tk.StringVar())
             self.inValues[i].trace('w',limitSize)
             inEntry = tk.Entry(self,textvariable=self.inValues[i])
             inEntry.grid(row=i+1,column=0)
-            
-            self.outValues.append(tk.StringVar())
+
+            if i == layers-1:
+                if self.parent.network_edition.get() == netco.TREND:
+                    self.outValues.append(tk.StringVar(value=netco.TREND_OUTPUTS))
+                elif self.parent.network_edition.get() == netco.CYCLES:
+                    self.outValues.append(tk.StringVar(value=netco.CYCLES_OUTPUTS))
+            else:
+                self.outValues.append(tk.StringVar())
             self.outValues[i].trace('w',limitSize)
             outEntry = tk.Entry(self,textvariable=self.outValues[i])
             outEntry.grid(row=i+1,column=1)
         
-        save_button = tk.Button(self,text="Save",command=lambda:self.save_layers())
+        save_button = tk.Button(self,text="Save",command=lambda:self.create_network())
         save_button.grid(row=layers+1,column=0)
         
         self.mainloop()
@@ -226,16 +238,20 @@ class structureToplevelGUI(tk.Toplevel):
         self.geometry("%dx%d+%d+%d" % (width,heigth,offset_x,offset_y))
         self.configure(bg="#000000")
 
-    def save_layers(self):
+    def create_network(self):
+        root_path = os.getcwd()+"/models/"+self.parent.network_edition.get()+"/"+self.parent.model.get()
+        if self.parent.network_edition.get() == netco.TREND: network_name = netco.NN_TREND
+        if self.parent.network_edition.get() == netco.CYCLES: network_name = netco.NN_CYCLES
+        self.network = net.Network(netco.CREATE,network_name,root_path)
+
         lista = []
         for i in range(self.layers):
             lista.append([self.outValues[i].get(),self.inValues[i].get()])
         self.structure = np.array(lista)
         self.parent.structure = self.structure
-        self.version_path = os.getcwd()+"/models/"+self.parent.network_edition.get()+"/"+self.parent.model.get()
-        if not os.path.exists(self.version_path):
-            os.makedirs(self.version_path)
-        with open(self.version_path+"/info.txt","w") as file:
+        if not os.path.exists(self.network.version_path):
+            os.makedirs(self.network.version_path)
+        with open(self.network.version_path+"/info.txt","w") as file:
             file.write(30*"-"+"\n")
             file.write("Network Structure Information\n")
             file.write("Layer Format: [IN,OUT]\n")
@@ -254,7 +270,7 @@ class structureToplevelGUI(tk.Toplevel):
                 layer_counter+=1
             file.write(30*"-"+"\n")
         b = self.structure.tolist() # nested lists with same data, indices
-        file_path = self.version_path+"/network_structure.json"
+        file_path = self.network.version_path+"/network_structure.json"
         json.dump({"network_structure":b}, codecs.open(file_path, 'w', encoding='utf-8'),indent=4)
 
 class trainToplevelGUI(tk.Toplevel):
@@ -262,8 +278,31 @@ class trainToplevelGUI(tk.Toplevel):
         tk.Toplevel.__init__(self)
         self.settingsGUI("Training Setup")
         self.parent = parent
+        self.root_path = os.getcwd()+'/models/'+self.parent.network_edition.get()+'/'+self.parent.model.get()
+
         _label = tk.Label(self,text="Training Parameters",bg=self['bg'],fg = "#EFB509")
         _label.grid(row=0,column=0,sticky="nsew")
+
+        networks = []
+        for file in os.listdir(self.root_path):
+            if os.path.isdir(os.path.join(self.root_path,file)):
+                networks.append(file)
+
+        network_l = tk.Label(self,text="Network:",bg=self['bg'],fg = "#EFB509")
+        network_l.place(x=1,y=40)
+
+        self.network_version = ttk.Combobox(self,state="readonly")
+        self.network_version['values'] = sorted(networks)      
+        self.network_version.current(0)
+        self.network_version.place(x=111,y=40)
+        self.network = net.Network(netco.LOAD,self.network_version.get(),self.root_path)
+        self.network.layers_import(self.network.version_path+"/network_structure.json")
+
+        def callback():
+            self.network = net.Network(netco.LOAD,self.network_version.get(),self.root_path)
+            self.network.layers_import(self.network.version_path+"/network_structure.json")
+
+        self.network_version.bind("<<ComboboxSelected>>", lambda _ : callback())
 
         epochs_l = tk.Label(self,text="Epochs:",bg=self['bg'],fg = "#EFB509")
         epochs_l.place(x=1,y=60)
@@ -293,13 +332,56 @@ class trainToplevelGUI(tk.Toplevel):
         if self.parent.network_edition.get() == netco.TREND:
             network_edition = self.parent.network_edition.get()
             features_list = netco.TREND_FEATURES
-  
-        train_button = tk.Button(self,text="Train",command=lambda:self.parent.network.train(int(epochs.get()),float(learning_rate.get()),int(mini_batch.get()),network_edition))
+
+        train_button = tk.Button(self,text="Train",command=lambda:self.network.train(int(epochs.get()),float(learning_rate.get()),int(mini_batch.get()),network_edition))
         train_button.place(x=111,y=140)
         self.bind('<Return>', lambda event:self.parent.network.train(int(epochs.get()),float(learning_rate.get()),int(mini_batch.get()),network_edition))
         
         self.mainloop()
 
+    def settingsGUI(self,title,width=400,heigth=200):
+        self.resizable(False, False)
+        self.title(title)
+        self.width = width
+        self.height = heigth
+        width_sc = self.winfo_screenwidth()
+        heigth_sc = self.winfo_screenheight()
+        offset_x = (width_sc-width)/2
+        offset_y = (heigth_sc-heigth)/2
+        self.geometry("%dx%d+%d+%d" % (width,heigth,offset_x,offset_y))
+        self.configure(bg="#000000")
+
+class inferenceToplevelGUI(tk.Toplevel):
+    def __init__(self,parent):
+        tk.Toplevel.__init__(self)
+        self.settingsGUI("Inference Setup")
+        self.parent = parent
+        self.root_path = os.getcwd()+'/models/'+self.parent.network_edition.get()+'/'+self.parent.model.get()
+
+        networks = []
+        for file in os.listdir(self.root_path):
+            if os.path.isdir(os.path.join(self.root_path,file)):
+                networks.append(file)
+
+        #self.network_edition.bind("<<ComboboxSelected>>", lambda _ : callback(self))
+
+        self.network_version = ttk.Combobox(self,state="readonly")
+        self.network_version['values'] = sorted(networks)      
+        self.network_version.current(0)
+        self.network_version.place(x=111,y=60)
+        
+        train1_button = tk.Button(self,text="edition",command=lambda:self.load_trained_network())
+        train1_button.place(x=111,y=80)
+        
+        self.mainloop()
+
+    def load_trained_network(self):
+        network_name = self.network_version.get()
+        network_root_path = self.root_path
+        self.network = net.Network(netco.LOAD,network_name,network_root_path)
+        #self.network.layers_import(self.network.version_path+"/network_structure.json")
+        self.network.inference()
+        
     def settingsGUI(self,title,width=400,heigth=200):
         self.resizable(False, False)
         self.title(title)

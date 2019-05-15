@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
+
 def labelMaker(class_range,val):
     ret = []
     for i in range(class_range):
@@ -84,4 +85,5 @@ def random_mini_batches(X, Y, mini_batch_size = 64, seed = 0):
         mini_batches.append(mini_batch)
         
     return mini_batches
+
 

@@ -38,7 +38,7 @@ def cycleProcess(data_path,model_path,features_list,window_settings):
     print(50*"-")
     print("~$> Loading the dataset from " + data_path)
     full_df = pd.read_csv(data_path+"/templates.csv", header=None, engine="python").T
-    full_df = full_df.head(700)
+    full_df = full_df.head(800)
     print("~$> Loaded the dataset")
     cycleWindow(full_df, features_list, window_settings, model_path)
     
