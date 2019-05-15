@@ -27,21 +27,18 @@ from include.utils import normalizeDataFrame
 
 class Network():
     def __init__(self,flag,name,root_path):
+        self.name = name
+        self.root_path = root_path
+        self.layers = {}
         if flag==netco.CREATE:
             print("~$> Creating Network")
-            self.name = name 
-            self.root_path = root_path
+            # On new network creation we check for previous versions up to 10
             self.version_control()
-            self.layers = {}
         elif flag==netco.LOAD:
             print("~$> Loading Network")
-            self.name = name 
-            print(self.name)
-            self.root_path = root_path
             self.cli_name = "~$/"+self.name+">"
             self.version_path = os.path.join(self.root_path,self.name)
             self.version = self.name.split("_")[-1]
-            self.layers = {}
  
     def version_control(self):
         versions_dir = []
@@ -67,7 +64,6 @@ class Network():
                 if re.match(re.escape(netco.BUILD),filename):
                     builds_dir.append(filename)
         builds_dir = sorted(builds_dir,reverse=True)
-        print(builds_dir)
         if builds_dir == []:
             self.build_version = 1
         else:
@@ -82,6 +78,7 @@ class Network():
         b_new = json.loads(obj_text)
         self.structure = np.array(b_new["network_structure"],dtype=int)
 
+    #[DEPRECATED]
     def show_data(self,flag):
         plt.figure(1)
         plt.subplot(211)
@@ -105,6 +102,7 @@ class Network():
             print("ERROR BAD DATA FLAG")
     
     def train(self,epochs,learning_rate,minibatch_size,edition):
+        # On a new training process of the same network we check for new build/train up to 10
         self.build_control()
         self.epochs = epochs
         self.learning_rate = learning_rate
@@ -147,9 +145,7 @@ class Network():
             self.init_layers()
             # [Add Forward Propogation to the graph]
             final = self.forward_propagation(X)
-            print(final)
             final = tf.identity(final, name="Final")
-            print(final)
             # [Adding cost function for the Adam optimizer to the graph]
             cost = nets.function_cross_entropy(final, Y)
             optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
@@ -240,7 +236,6 @@ class Network():
             saver.save(sess, self.version_path+'/model')
             self.network_training_summary_report()
 
-
         return self.predictions
         
     def init_layers(self):
@@ -282,6 +277,7 @@ class Network():
         # [Return last layer]
         return A[-1]
 
+    #[DEPRECATED]
     def export_predictions(self,start,end):
         full_df = pd.read_csv(os.getcwd()+"/templates.csv", header=None, engine="python").T
         self.test_df['PRED_LABEL'] = self.predictions_test
@@ -344,37 +340,59 @@ class Network():
             for line in lines:
                 file.write(line+'\n')
         print(self.cli_name+" Exporting Information File to "+self.build_path)
-        
-    def inference(self):
-        print(self.root_path)
-        X_data = pd.read_csv(self.root_path+"/"+netco.TRAINING+".csv",usecols=netco.CYCLES_FEATURES)
-        X_data = normalizeDataFrame(X_data)
-        X_train, X_test = train_test_split(X_data, test_size=0.3, shuffle=False)
-        X_train = X_train.sample(frac=1)
-        Y_train = X_train[['LABEL']]
-        Y_test = X_test[['LABEL']]
-        
-        self.train_df = X_train
-        self.test_df = X_test
-        # [Plotting Train and Test Data at the stage of training]
-        X_train = X_train.drop(["LABEL"],axis=1)
-        X_test = X_test.drop(["LABEL"],axis=1)
-        X_train = X_train.values.transpose()
-        X_test = X_test.values.transpose()
-        Y_train = np.array([nets.labelMaker(int(Y_train.values.max())+1,i[0]) for i in Y_train.values]).transpose()
-        Y_test = np.array([nets.labelMaker(int(Y_test.values.max())+1,i[0]) for i in Y_test.values]).transpose()
-        (n_x, m) = X_train.shape
-        n_y = Y_train.shape[0]
+    
+    #[TO BE CHANGED]
+    def inference(self,window_settings):
+        begin = time.time()
+        df = pd.read_csv(self.root_path+"/visual.csv",engine='python')
+        X_data = nets.cycleInference(df,netco.CYCLES_FEATURES,window_settings,self.root_path,True)
+        print(X_data)
+        n_X_data = normalizeDataFrame(X_data)
+        n_X_data = n_X_data.drop(["LABEL"],axis=1)
+        n_X_data = n_X_data.values.transpose()
 
         self.layers_import(self.version_path+"/network_structure.json")
         self.graph = tf.Graph()
         with self.graph.as_default():
             saver = tf.train.import_meta_graph(self.version_path+'/model.meta')
-            X, Y = nets.create_placeholders(n_x, n_y)
         with tf.Session(graph=self.graph) as sess:
             saver.restore(sess, self.version_path+"/model")
             final = self.graph.get_tensor_by_name("Final:0")
-            print(final)
-            #self.predictions_test = sess.run(tf.argmax(final),feed_dict={X: X_test})
-            #print(self.predictions_test)
-        print(":ok")
+            X = self.graph.get_tensor_by_name("X:0")
+            self.predictions_visual = sess.run(tf.argmax(final),feed_dict={X: n_X_data})
+
+        font = {'family': 'serif',
+            'color':  'darkred',
+            'weight': 'normal',
+            'size': 12,
+            }
+        fig1 = plt.figure(4)
+        plt.title('Inference Speed Profile', fontdict=font)
+        plt.xlabel('Time (s)', fontdict=font)
+        plt.ylabel('Engine Speed (rpm)', fontdict=font)
+        plt.ylim(0, 1)
+        plt.style.use('ggplot')
+        plot_feat = 'E_REV'
+        ax = df[plot_feat].plot()
+        x_lines = []
+        hold = 0
+        prev_hold = 0
+        for i in range(len(X_data)):
+            if self.predictions_visual[i]!=self.predictions_visual[i-1]:
+                hold = int(window_settings[0])+i*int(window_settings[1])
+                x_lines.append([prev_hold-1,hold-1,i-1])
+                prev_hold = hold
+
+        x_lines.append([x_lines[-1][1]-1,len(df)-1,len(X_data)-1])
+        del x_lines[0]
+        for pair in x_lines:
+            xs = np.arange(pair[0], pair[1])
+            ys = xs*0+0.5
+            prediction = str(self.predictions_visual[pair[2]])
+            ax.text((pair[0]+pair[1])/2, 0.6, prediction,bbox=dict(facecolor='red', alpha=0.5))
+            plt.plot(xs, ys,'-b')
+            plt.plot(pair[0], 0.5, 'b<')
+            plt.plot(pair[1]-1, 0.5, 'b>')
+        
+        print(round(time.time()-begin,1),'Seconds')
+        plt.show()

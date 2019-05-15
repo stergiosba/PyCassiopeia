@@ -363,8 +363,6 @@ class inferenceToplevelGUI(tk.Toplevel):
             if os.path.isdir(os.path.join(self.root_path,file)):
                 networks.append(file)
 
-        #self.network_edition.bind("<<ComboboxSelected>>", lambda _ : callback(self))
-
         self.network_version = ttk.Combobox(self,state="readonly")
         self.network_version['values'] = sorted(networks)      
         self.network_version.current(0)
@@ -380,7 +378,10 @@ class inferenceToplevelGUI(tk.Toplevel):
         network_root_path = self.root_path
         self.network = net.Network(netco.LOAD,network_name,network_root_path)
         #self.network.layers_import(self.network.version_path+"/network_structure.json")
-        self.network.inference()
+        window_settings = self.parent.model.get().split('_')
+        window_settings = [30,2]
+        #del window_settings[0]
+        self.network.inference(window_settings)
         
     def settingsGUI(self,title,width=400,heigth=200):
         self.resizable(False, False)

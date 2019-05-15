@@ -51,6 +51,7 @@ def cycleWindow(_data_df,_features_list,_window_settings,__model_path,_csv_flag 
                 if len(window_df)!=w_size:
                     continue
                 window_df = window_df.reset_index(drop=True)
+                print(window_df)
                 for i in window_df.index:
                     if window_df[i]<EPS:
                         window_df[i] = 0

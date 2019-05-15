@@ -6,11 +6,14 @@ Created on Wed Feb 27 13:32:40 2019
 @author: Khanax
 """
 import math
+import time
+import statistics as stats
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 
+from ..utils import EPS,windowUnits
 
 def labelMaker(class_range,val):
     ret = []
@@ -86,4 +89,95 @@ def random_mini_batches(X, Y, mini_batch_size = 64, seed = 0):
         
     return mini_batches
 
+def cycleInference(_data_df,_features_list,_window_settings,__model_path,_csv_flag = True):
+    begin = time.time()
+    print(_window_settings)
+    w_size = int(_window_settings[0])
+    w_step = int(_window_settings[1])
+    print(50*"-")
+    print("~$> Initializing Window Making Processing for Engine Cycles")
+    print(50*"-")
+    print("~$> Window size",w_size,"seconds.")
+    print("~$> Window step",w_step,"seconds.")
+    print(50*"-")
+    visual_df = pd.DataFrame(columns=_features_list)
 
+    w_start = 0
+    w_end = w_size
+
+    for window in range(_data_df.index.min(),_data_df.index.max(),w_step):
+        window_df = _data_df[w_start:w_end]
+        window_df = window_df.loc[:,'E_REV']
+        if len(window_df)!=w_size:
+            continue
+        window_df = window_df.reset_index(drop=True)
+        for i in window_df.index:
+            if window_df[i]<EPS:
+                window_df[i] = 0
+        acc_list = []
+        dec_list = []
+        counter_P_N_030 = 0
+        counter_P_N_3050 = 0
+        counter_P_N_5080 = 0
+        counter_P_N_80100 = 0
+        counter_P_D_12 = 0
+        counter_P_D_23 = 0
+        for time_step in window_df.index:
+            if window_df[time_step]<=0.30:
+                counter_P_N_030+=1
+            elif 0.30<window_df[time_step] and window_df[time_step]<0.50:
+                counter_P_N_3050+=1
+            elif 0.50<window_df[time_step] and window_df[time_step]<0.80:
+                counter_P_N_5080+=1
+            else:
+                counter_P_N_80100+=1
+            if time_step==0:
+                pass
+            else:
+                acc = window_df[time_step]-window_df[time_step-1]
+                if acc > 0:
+                    acc_list.append(acc)
+                else:
+                    dec_list.append(acc)
+                    if acc<-0.05:
+                        counter_P_D_12+=1
+                    if -0.05<acc<-0.01:
+                        counter_P_D_23+=1
+        if len(dec_list) == 0:
+            ave_win_dec = 0
+            max_win_dec = 0
+        else:
+            ave_win_dec = stats.mean(dec_list)
+            max_win_dec = min(dec_list)
+        if len(acc_list) == 0:
+            ave_win_acc = 0
+            max_win_acc = 0
+            std_win_acc = 0
+        elif len(acc_list) == 1:
+            std_win_acc == 0
+        else:
+            ave_win_acc = stats.mean(acc_list)
+            max_win_acc = max(acc_list)
+            std_win_acc = stats.stdev(acc_list)
+        visual_df = visual_df.append({
+        'LABEL': 1,
+        'N_MAX': round(window_df.max(),4),
+        'A_MAX': round(max_win_acc,4),
+        'A_AVE': round(ave_win_acc,4),
+        'A_STD': round(std_win_acc,4),
+        'D_MAX': round(max_win_dec,4),
+        'D_AVE': round(ave_win_dec,4),
+        'P_N_030': round(counter_P_N_030/len(window_df),4),
+        'P_N_3050': round(counter_P_N_3050/len(window_df),4),
+        'P_N_5080': round(counter_P_N_5080/len(window_df),4),
+        'P_N_80100':round(counter_P_N_80100/len(window_df),4)
+        #'P_D_12':1,
+        #'P_D_23':1
+        },ignore_index=True)
+        
+        w_start+=w_step
+        w_end+=w_step
+    visual_df = visual_df.astype({'LABEL': int})
+
+    print(50*"-")
+    return visual_df
