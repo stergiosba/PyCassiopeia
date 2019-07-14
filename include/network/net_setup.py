@@ -15,6 +15,7 @@ import tensorflow as tf
 
 from ..utils import EPS,windowUnits
 
+'''
 def labelMaker(class_range,val):
     ret = []
     for i in range(class_range):
@@ -23,6 +24,12 @@ def labelMaker(class_range,val):
         else:
             ret.append(0)
     return ret
+'''
+
+def labelMaker(data, nb_classes):
+    """Convert an iterable of indices to one-hot encoded labels."""
+    targets = np.array(data).reshape(-1)
+    return np.eye(nb_classes)[targets]
         
 # n_x = num__input_features
 # n_y = expected output (num classes)
@@ -45,7 +52,7 @@ def function_cross_entropy(final_layer, Y):
     # to fit the tensorflow requirement for tf.nn.softmax_cross_entropy_with_logits(...,...)
     logits = tf.transpose(final_layer)
     labels = tf.transpose(Y)
-   
+
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=labels))
     return cost
     

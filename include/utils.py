@@ -4,13 +4,15 @@ Created on Thu Feb 28 13:32:50 2019
 
 @author: stergios
 """
+import os
 import pandas as pd
 from sklearn import preprocessing
 import numpy as np
 import math
 
 EPS = 1.0e-6
-MAX_NULL = 1.0e5
+MAX_NULL = 1.0e4
+ACC_THRESHOLD = 0.002
 
 # [Mathematical solution for proper window sizes]
 def windowUnits(max_length,size,step):
@@ -26,18 +28,26 @@ def windowUnits(max_length,size,step):
         counter+=1
     return counter
 
-# [Fixing all null data from Dataframe]
-def fixNullDataFrame(df,_measurements):
-    for measurement in _measurements:
-        print("~$> Calculated",df[df[measurement].isnull()].size,"missing datapoints.")
-        if df[df[measurement].isnull()].size >MAX_NULL:
-            print("~$> Dataframe is missing to many data")
-        if 0 in df[df[measurement].isnull()].index:
-            df[measurement][0] = 0
-        for i in df[df[measurement].isnull()].index:
-            df[measurement][i] = df[measurement][i-1]
-        print("~$> All missing datapoints have been restored")
-    return df
+# [Returns the null-free full dataframe from indeces.]
+def cleanTrendData(data_path,measurements,indeces):
+    full_df = pd.DataFrame()
+    files = pd.DataFrame(sorted(os.listdir(data_path)))
+    for index in indeces:
+        index_df = pd.read_csv(data_path+"/"+files[0][index],usecols=measurements,engine='python')
+        print('~$> Processing Dataframe with index:',index)
+        for measurement in measurements:
+            print('~$> Calculated',index_df[index_df[measurement].isnull()].size,'missing datapoints.')
+            if index_df[index_df[measurement].isnull()].size > MAX_NULL:
+                print("~$> Dataframe is missing to many data")
+                break
+            if 0 in index_df[index_df[measurement].isnull()].index:
+                index_df[measurement][0] = 0
+            for i in index_df[index_df[measurement].isnull()].index:
+                index_df[measurement][i] = index_df[measurement][i-1]
+            index_df[index_df < 0] = 0
+        full_df = full_df.append(index_df,ignore_index=True)
+        print(50*"-")
+    return full_df
 
 # [Normalizing Datagrame Columns except for LABEL column]    
 def normalizeDataFrame(df):

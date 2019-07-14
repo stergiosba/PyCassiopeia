@@ -10,32 +10,31 @@ import os
 import time
 import statistics as stats
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 
-from .utils import windowUnits,EPS
+from .utils import windowUnits,EPS,ACC_THRESHOLD
 import include.network.net_constants as netco
 
 
-def cycleWindow(_data_df,_features_list,_window_settings,__model_path,_csv_flag = True):
+def cycleWindow(_data_df,features_list,window_settings,model_path):
     begin = time.time()
 
     #exit setting
-    w_size = _window_settings[0]
-    w_step = _window_settings[1]
+    w_size = window_settings[0]
+    w_step = window_settings[1]
     print(50*"-")
     print("~$> Initializing Window Making Processing for Engine Cycles")
     print(50*"-")
     print("~$> Window size",w_size,"seconds.")
     print("~$> Window step",w_step,"seconds.")
     print(50*"-")
-    train_df = pd.DataFrame(columns=_features_list)
-    test_df = pd.DataFrame(columns=_features_list)
-
+    train_df = pd.DataFrame(columns=features_list)
+    test_df = pd.DataFrame(columns=features_list)
+    fit_df = pd.DataFrame(columns=features_list)
     # [Finding maximum count of correct length windows]
     w_count = windowUnits(len(_data_df),w_size,w_step)
 
@@ -51,10 +50,11 @@ def cycleWindow(_data_df,_features_list,_window_settings,__model_path,_csv_flag 
                 if len(window_df)!=w_size:
                     continue
                 window_df = window_df.reset_index(drop=True)
-                print(window_df)
+                # Checking for values below EPS and making them zero.
                 for i in window_df.index:
                     if window_df[i]<EPS:
                         window_df[i] = 0
+                # Initializing the counters
                 acc_list = []
                 dec_list = []
                 counter_P_N_030 = 0
@@ -132,17 +132,15 @@ def cycleWindow(_data_df,_features_list,_window_settings,__model_path,_csv_flag 
     correlations = fit_df[fit_df.columns].corr(method='pearson')
     heat_ax = sns.heatmap(correlations, cmap="YlGnBu", annot = True)
 
-    if not os.path.exists(__model_path): os.makedirs(__model_path)
+    if not os.path.exists(model_path): os.makedirs(model_path)
 
-    fit_df.to_csv(__model_path+"/"+netco.TRAINING+".csv",index=False)
+    fit_df.to_csv(model_path+"/"+netco.TRAINING+".csv",index=False)
 
-def trendWindow(_data_df,_fit_df,__measurements,__window_settings,__model_path,_csv_flag = True):
+def trendWindow(_data_df,features_list,measurements,window_settings,model_path):
     begin = time.time()
-    csv_save_name = 'train_data.csv'
     #exit setting
-    w_size = __window_settings[0]
-    w_step = __window_settings[1]
-    #settings_path = os.path.exists(__model_path+"/"+csv_save_name)
+    w_size = window_settings[0]
+    w_step = window_settings[1]
     print(50*"-")
     print("~$> Initializing Window Making Processing for Speed Trend Prediction")
     print(50*"-")
@@ -152,9 +150,10 @@ def trendWindow(_data_df,_fit_df,__measurements,__window_settings,__model_path,_
     
     # [Finding maximum count of correct length windows]
     w_count = windowUnits(len(_data_df),w_size,w_step)
-     
+    fit_df = pd.DataFrame(columns=features_list)
     w_start = 0
     w_end = w_size
+    co = 0
     print("~$> Total Windows Progression")
     with tqdm(total = w_count,desc = "~$> ",unit="win") as pbar:
         for window in range(_data_df.index.min(),_data_df.index.max(),w_step):
@@ -162,46 +161,57 @@ def trendWindow(_data_df,_fit_df,__measurements,__window_settings,__model_path,_
             if len(window_df)!=w_size:
                 continue
             window_df = window_df.reset_index(drop=True)
-            acc_diff_list = []
+            win_accs = []
             for time_step in window_df.index:
                 if time_step==0:
                     pass
                 else:
-                    acc_diff = window_df[__measurements[0]][time_step]-window_df[__measurements[0]][time_step-1]
-                    acc_diff_list.append(acc_diff)
-            ave_win_acc = stats.mean(acc_diff_list)
+                    acc = window_df[measurements[0]][time_step]-window_df[measurements[0]][time_step-1]
+                    win_accs.append(acc)
+            ave_win_acc = round(stats.mean(win_accs),4)
+            max_win_revs = round(window_df[measurements[0]].max(),4)
+            min_win_revs = round(window_df[measurements[0]].min(),4)
+            ave_win_revs = round(window_df[measurements[0]].mean(),4)
+            in_win_revs = round(window_df[measurements[0]][window_df.index.min()],4)
+            out_win_revs = round(window_df[measurements[0]][window_df.index.max()],4)
             if w_start == 0:
-                label = 2 #Starting with Steady
-                prev_ave_win_acc = ave_win_acc
+                label = 1 #Starting with Steady
+                prev_label = label
             else:
-                if (ave_win_acc-prev_ave_win_acc)<-0.02:
-                    label = 0 #Decel
-                elif (ave_win_acc-prev_ave_win_acc)>0.02:
-                    label = 1 #Accel
-                else:
-                    label = 2 #Steady
-            #del acc_list
-            _fit_df = _fit_df.append({
-                'LABEL': label,
-                'N_MAX': round(window_df[__measurements[0]].max(),4),
-                'N_MIN': round(window_df[__measurements[0]].min(),4),
-                'N_AVE': round(window_df[__measurements[0]].mean(),4),
-                'N_IN' : round(window_df[__measurements[0]][window_df.index.min()],4),
-                'N_OUT': round(window_df[__measurements[0]][window_df.index.max()],4),
-                'A_AVE': round(ave_win_acc,4)
+                if (ave_win_revs==0 and max_win_revs==0 and min_win_revs==0):
+                    label = 0 #Dead Stop
+                elif (ave_win_revs<0.5 and ave_win_acc<ACC_THRESHOLD and ave_win_acc>-ACC_THRESHOLD):
+                    label = 1 #Low Speed Steady
+                elif (ave_win_revs>0.5 and ave_win_acc<ACC_THRESHOLD and ave_win_acc>-ACC_THRESHOLD):
+                    label = 2 #High Speed Steady
+                elif (ave_win_acc>=ACC_THRESHOLD):
+                    label = 3 #Acceleration
+                elif (ave_win_acc<=-ACC_THRESHOLD):
+                    label = 4 #Deceleration
+            fit_df = fit_df.append({
+                'LABEL': prev_label,
+                'N_MAX': max_win_revs,
+                'N_MIN': min_win_revs,
+                'N_AVE': ave_win_revs,
+                'N_IN' : in_win_revs,
+                'N_OUT': out_win_revs,
+                'A_AVE': ave_win_acc
                 },ignore_index=True)
             w_start+=w_step
             w_end+=w_step
-            prev_ave_win_acc = ave_win_acc
+            prev_label = label
+            '''
+            co+=1
+            if (co >= 8000):
+                break
+            '''
             pbar.update(n=1)  
     print(50*"-")    
     print("~$> Plotting Pearson Correlation Matrix")
-    correlations = _fit_df[_fit_df.columns].corr(method='pearson')
+    correlations = fit_df[fit_df.columns].corr(method='pearson')
     heat_ax = sns.heatmap(correlations, cmap="YlGnBu", annot = True)
-
-    os.makedirs(__model_path)
-    if _csv_flag == True:
-        _fit_df.to_csv(__model_path+"/"+csv_save_name)
+    os.makedirs(model_path)
+    fit_df.to_csv(model_path+"/"+netco.TRAINING+".csv",index=False)
 
     finish = time.time()
     print(50*"-")

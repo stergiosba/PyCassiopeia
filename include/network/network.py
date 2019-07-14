@@ -26,10 +26,12 @@ from include.utils import normalizeDataFrame
 # create grap
 
 class Network():
-    def __init__(self,flag,name,root_path):
+    def __init__(self,edition,flag,name,root_path,features):
         self.name = name
         self.root_path = root_path
         self.layers = {}
+        self.edition = edition
+        self.features = features
         if flag==netco.CREATE:
             print("~$> Creating Network")
             # On new network creation we check for previous versions up to 10
@@ -79,6 +81,7 @@ class Network():
         self.structure = np.array(b_new["network_structure"],dtype=int)
 
     #[DEPRECATED]
+    '''
     def show_data(self,flag):
         plt.figure(1)
         plt.subplot(211)
@@ -100,34 +103,36 @@ class Network():
             plt.show()
         else:
             print("ERROR BAD DATA FLAG")
-    
-    def train(self,epochs,learning_rate,minibatch_size,edition):
+    '''
+    def train(self,epochs,learning_rate,minibatch_size):
         # On a new training process of the same network we check for new build/train up to 10
+        costs_flag = False
         self.build_control()
         self.epochs = epochs
         self.learning_rate = learning_rate
         self.minibatch_size = minibatch_size
-        self.edition = edition
         graph = tf.Graph()
-        self.graph=graph
+        self.graph = graph
         begin = time.time()
-
-        X_data = pd.read_csv(self.root_path+"/"+netco.TRAINING+".csv",usecols=netco.CYCLES_FEATURES)
+        X_data = pd.read_csv(self.root_path+"/"+netco.TRAINING+".csv",usecols=self.features)
         X_data = normalizeDataFrame(X_data)
-        X_train, X_test = train_test_split(X_data, test_size=0.3, shuffle=False)
-        X_train = X_train.sample(frac=1)
-        Y_train = X_train[['LABEL']]
-        Y_test = X_test[['LABEL']]
+        X_data = X_data.astype({'LABEL': int})
+        if self.edition == netco.TREND:
+            X_train, X_test = train_test_split(X_data, test_size=0.3, shuffle=False)
+            outputs = netco.TREND_OUTPUTS
+        else:
+            X_train, X_test = train_test_split(X_data, test_size=0.3, shuffle=True)
+            outputs = netco.CYCLES_OUTPUTS
         
         self.train_df = X_train
         self.test_df = X_test
         # [Plotting Train and Test Data at the stage of training]
+        Y_train = nets.labelMaker(X_train[['LABEL']],outputs).transpose()
+        Y_test = nets.labelMaker(X_test[['LABEL']],outputs).transpose()
         X_train = X_train.drop(["LABEL"],axis=1)
         X_test = X_test.drop(["LABEL"],axis=1)
         X_train = X_train.values.transpose()
         X_test = X_test.values.transpose()
-        Y_train = np.array([nets.labelMaker(int(Y_train.values.max())+1,i[0]) for i in Y_train.values]).transpose()
-        Y_test = np.array([nets.labelMaker(int(Y_test.values.max())+1,i[0]) for i in Y_test.values]).transpose()
 
         tf.set_random_seed(1)
         tf.reset_default_graph()
@@ -158,26 +163,34 @@ class Network():
             prediction_classes = table.lookup(tf.to_int64(indices))
             builder = tf.saved_model.builder.SavedModelBuilder(self.build_path)
             train_writer = tf.summary.FileWriter(self.version_path+"/train", sess.graph)
+
             # [Training loop]
-            with tqdm(total = epochs,desc = self.cli_name+" ",unit="epo") as pbar:
+            print(self.cli_name+"\n")
+            with tqdm(total = epochs,desc = "Cost:  ",unit="epo") as pbar:
                 for epoch in range(epochs):
                     # [Calculate cost related to an epoch]
                     epoch_cost = 0
                     num_minibatches = int(m / minibatch_size) # number of minibatches of size minibatch_size in the train set
                     seed = seed + 1
                     minibatches = nets.random_mini_batches(X_train, Y_train, minibatch_size, seed)
-                    for minibatch in minibatches:
-                        # [Select a minibatch]
-                        (minibatch_X, minibatch_Y) = minibatch
-                    
-                        _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
-                        epoch_cost += minibatch_cost / num_minibatches
+                    with tqdm(total=num_minibatches,desc = "Progress:  ",unit="mini") as minibar:
+                        for minibatch in minibatches:
+                            # [Select a minibatch]
+                            (minibatch_X, minibatch_Y) = minibatch
+                        
+                            _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
+                            epoch_cost += minibatch_cost / num_minibatches
+                            minibar.update(n=1)
                     
                     # [Print progress and the cost every epoch]
                     if epoch % 1 == 0:
+                        pbar.set_description('Cost: {} '.format(round(epoch_cost,4)))
+                        pbar.refresh() # to show immediately the update
                         pbar.update(n=1)
-                        print(" ~ Cost:",round(epoch_cost,4))
-                        costs.append(epoch_cost)
+                        costs.append(round(epoch_cost,4))
+            if costs_flag:
+                print("")
+                print(costs)
 
             # [Saving the parameters in a variable]
             self.layers = sess.run(self.layers)
@@ -218,6 +231,7 @@ class Network():
             builder.save()
             
             finish = time.time()
+            self.training_time = round(finish-begin,2)
             print(self.cli_name+" Time for training was",round(finish-begin,2),"seconds")
 
             # [Calculating the correct predictions]
@@ -228,9 +242,8 @@ class Network():
             tf.summary.histogram("predictions", final)
             # [Calculate accuracy on the test set]
             accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-            self.train_acc = accuracy.eval({X: X_train, Y: Y_train})
-            print(self.train_acc)
-            self.test_acc = accuracy.eval({X: X_test, Y: Y_test})
+            self.train_acc = round(100*accuracy.eval({X: X_train, Y: Y_train}),2)
+            self.test_acc = round(100*accuracy.eval({X: X_test, Y: Y_test}),2)
             print(self.cli_name+" Train Accuracy:", accuracy.eval({X: X_train, Y: Y_train}))
             print(self.cli_name+" Test Accuracy:", accuracy.eval({X: X_test, Y: Y_test}))
             saver.save(sess, self.version_path+'/model')
@@ -249,31 +262,27 @@ class Network():
         Returns:
             self.layers -- a dictionary of tensors containing W1, b1, W2, b2...
         """ 
-        layer_counter = 1
-        for layer in self.structure:
+        for layer_counter,layer in enumerate(self.structure,start=1):
             name_W = "W"+str(layer_counter)
             name_b = "b"+str(layer_counter)
             with tf.variable_scope('Weights'):
                 self.layers[name_W] = tf.get_variable(name_W, [layer[0], layer[1]], initializer = tf.contrib.layers.xavier_initializer(seed=1))
             with tf.variable_scope('Biases'):
                 self.layers[name_b] = tf.get_variable(name_b, [layer[0], 1], initializer = tf.zeros_initializer())
-            layer_counter+=1
             
     def forward_propagation(self,X):
         Z = []
         A = []
         A.append(X)
-        layer_counter = 1
-        for layer in self.structure:
-            if layer_counter == len(self.structure):
+        for layer,_ in enumerate(self.structure,start=1):
+            if layer == len(self.structure):
                 # [Last layer - LINEAR]
-                Z.append(tf.add(tf.matmul(self.layers["W"+str(layer_counter)], A[layer_counter-1]), self.layers["b"+str(layer_counter)]))
-                A.append(Z[layer_counter-1])
+                Z.append(tf.add(tf.matmul(self.layers["W"+str(layer)], A[layer-1]), self.layers["b"+str(layer)]))
+                A.append(Z[layer-1])
             else:
                 # [All hidden layers - TANH]
-                Z.append(tf.add(tf.matmul(self.layers["W"+str(layer_counter)], A[layer_counter-1]), self.layers["b"+str(layer_counter)]))
-                A.append(tf.nn.sigmoid(Z[layer_counter-1]))
-            layer_counter+=1
+                Z.append(tf.add(tf.matmul(self.layers["W"+str(layer)], A[layer-1]), self.layers["b"+str(layer)]))
+                A.append(tf.nn.sigmoid(Z[layer-1]))
         # [Return last layer]
         return A[-1]
 
@@ -328,8 +337,9 @@ class Network():
                 'Epochs: ' + str(self.epochs),
                 'Learning Rate: ' + str(self.learning_rate),
                 'Minibatch Size: ' + str(self.minibatch_size),
-                'Training Accuracy: ' + str(self.train_acc),
-                'Testing Accuracy: ' + str(self.test_acc),
+                'Training Accuracy: ' + str(self.train_acc) + "%",
+                'Testing Accuracy: ' + str(self.test_acc) + "%",
+                'Training Time: ' + str(self.training_time) + " seconds",
                 '',
                 '[PATHS]',
                 'root_path: \"'+self.root_path+'\"',

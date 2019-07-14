@@ -1,11 +1,12 @@
 import tkinter as tk
 from tkinter import ttk
-from .gui_frames import cycleFrame,trendFrame,networksFrame
+from .gui_windows import windowsFrame
+from .gui_networks import classficiationNetworksFrame,controlNetworksFrame
 from .gui_themes import GuiTheme
 
 class MainApplication(ttk.Notebook):
     def __init__(self,parent,*args,**kwargs):
-        self.theme = GuiTheme("orange","white")
+        self.theme = GuiTheme('red','black','white','black')
         ttk.Notebook.__init__(self,parent,*args,**kwargs)
         style = ttk.Style()
         style.theme_create( "yummy", parent="alt", settings={
@@ -17,14 +18,13 @@ class MainApplication(ttk.Notebook):
 
         style.theme_use("yummy")
         self.parent = parent
-        
-        cycle_tab = cycleFrame(self)
-        trend_tab = trendFrame(self)
-        network_tab = networksFrame(self)
+        windows_tab = windowsFrame(self)
+        class_networks_tab = classficiationNetworksFrame(self)
+        control_network_tab = controlNetworksFrame(self)
 
-        self.add(cycle_tab, text = "Cycle Window")
-        self.add(trend_tab, text = "Trend Window")
-        self.add(network_tab, text = "Network")
+        self.add(windows_tab, text = "Windows")
+        self.add(class_networks_tab, text = "Classification NET")
+        self.add(control_network_tab, text= "Control NET")
 
 class GUI(tk.Tk):
     def __init__(self,title="Cassiopeia Control"):

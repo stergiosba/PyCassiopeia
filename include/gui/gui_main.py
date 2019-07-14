@@ -5,7 +5,7 @@ import pandas as pd
 import tensorflow as tf
 from numpy.random import seed
 from tensorflow import set_random_seed
-#import matplotlib.animation as animation
+import matplotlib.pyplot as plt
 
 from include.network import network
 import include.network.net_constants as netco
@@ -26,6 +26,9 @@ def trend_windows_execute(window_size,window_step):
             trendProcess(data_path,model_path,features_list,measurements,window_settings)
         else:
             print("~$> The Model already exists.")
+            fit_df = pd.read_csv(model_path+"/train.csv",usecols=features_list,engine='python')
+            fit_df.plot()
+            plt.show()
     else:
         print("Cant Have smaller size than step")
 
@@ -42,5 +45,8 @@ def cycles_windows_execute(window_size,window_step):
             cycleProcess(data_path,model_path,features_list,window_settings)
         else:
             print("~$> The Model already exists.")
+            fit_df = pd.read_csv(model_path+"/train.csv",usecols=features_list,engine='python')
+            fit_df.plot()
+            plt.show()
     else:
         print("Cant Have smaller size than step")
