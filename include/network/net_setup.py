@@ -118,15 +118,13 @@ def cycleInference(_data_df,_features_list,_window_settings,__model_path,_csv_fl
         if len(window_df)!=w_size:
             continue
         window_df = window_df.reset_index(drop=True)
-        for i in window_df.index:
-            if window_df[i]<EPS:
-                window_df[i] = 0
+        window_df = window_df.apply(lambda x: x if x > EPS else 0)
         acc_list = []
         dec_list = []
         counter_P_N_030 = 0
         counter_P_N_3050 = 0
-        counter_P_N_5080 = 0
-        counter_P_N_80100 = 0
+        counter_P_N_5070 = 0
+        counter_P_N_70100 = 0
         counter_P_D_12 = 0
         counter_P_D_23 = 0
         for time_step in window_df.index:
@@ -134,10 +132,10 @@ def cycleInference(_data_df,_features_list,_window_settings,__model_path,_csv_fl
                 counter_P_N_030+=1
             elif 0.30<window_df[time_step] and window_df[time_step]<0.50:
                 counter_P_N_3050+=1
-            elif 0.50<window_df[time_step] and window_df[time_step]<0.80:
-                counter_P_N_5080+=1
+            elif 0.50<window_df[time_step] and window_df[time_step]<0.70:
+                counter_P_N_5070+=1
             else:
-                counter_P_N_80100+=1
+                counter_P_N_70100+=1
             if time_step==0:
                 pass
             else:
@@ -167,8 +165,9 @@ def cycleInference(_data_df,_features_list,_window_settings,__model_path,_csv_fl
             max_win_acc = max(acc_list)
             std_win_acc = stats.stdev(acc_list)
         visual_df = visual_df.append({
-        'LABEL': 1,
+        'LABEL': -1881,
         'N_MAX': round(window_df.max(),4),
+        'N_AVE': round(window_df.mean(),4),
         'A_MAX': round(max_win_acc,4),
         'A_AVE': round(ave_win_acc,4),
         'A_STD': round(std_win_acc,4),
@@ -176,8 +175,8 @@ def cycleInference(_data_df,_features_list,_window_settings,__model_path,_csv_fl
         'D_AVE': round(ave_win_dec,4),
         'P_N_030': round(counter_P_N_030/len(window_df),4),
         'P_N_3050': round(counter_P_N_3050/len(window_df),4),
-        'P_N_5080': round(counter_P_N_5080/len(window_df),4),
-        'P_N_80100':round(counter_P_N_80100/len(window_df),4)
+        'P_N_5070': round(counter_P_N_5070/len(window_df),4),
+        'P_N_70100':round(counter_P_N_70100/len(window_df),4)
         #'P_D_12':1,
         #'P_D_23':1
         },ignore_index=True)

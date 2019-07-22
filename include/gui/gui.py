@@ -6,7 +6,7 @@ from .gui_themes import GuiTheme
 
 class MainApplication(ttk.Notebook):
     def __init__(self,parent,*args,**kwargs):
-        self.theme = GuiTheme('red','black','white','black')
+        self.theme = GuiTheme('blue','white','white','black')
         ttk.Notebook.__init__(self,parent,*args,**kwargs)
         style = ttk.Style()
         style.theme_create( "yummy", parent="alt", settings={

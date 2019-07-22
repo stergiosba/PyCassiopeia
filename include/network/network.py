@@ -104,7 +104,7 @@ class Network():
         else:
             print("ERROR BAD DATA FLAG")
     '''
-    def train(self,epochs,learning_rate,minibatch_size):
+    def train(self,epochs,learning_rate,minibatch_size,shuffle,test_size):
         # On a new training process of the same network we check for new build/train up to 10
         costs_flag = False
         self.build_control()
@@ -118,12 +118,16 @@ class Network():
         X_data = normalizeDataFrame(X_data)
         X_data = X_data.astype({'LABEL': int})
         if self.edition == netco.TREND:
-            X_train, X_test = train_test_split(X_data, test_size=0.3, shuffle=False)
             outputs = netco.TREND_OUTPUTS
         else:
-            X_train, X_test = train_test_split(X_data, test_size=0.3, shuffle=True)
             outputs = netco.CYCLES_OUTPUTS
-        
+        if shuffle==True:
+            print(self.cli_name+" Splitting Dataset with size "+str(test_size)+". Shuffling: Enabled!")
+        else:
+            print(self.cli_name+" Splitting Dataset with size "+str(test_size)+". Shuffling: Disabled!")
+        X_train, X_test = train_test_split(X_data, test_size=test_size, shuffle=shuffle)
+        X_train= X_train.reset_index(drop=True)
+        X_test= X_test.reset_index(drop=True)
         self.train_df = X_train
         self.test_df = X_test
         # [Plotting Train and Test Data at the stage of training]
@@ -282,7 +286,7 @@ class Network():
             else:
                 # [All hidden layers - TANH]
                 Z.append(tf.add(tf.matmul(self.layers["W"+str(layer)], A[layer-1]), self.layers["b"+str(layer)]))
-                A.append(tf.nn.sigmoid(Z[layer-1]))
+                A.append(tf.nn.tanh(Z[layer-1]))
         # [Return last layer]
         return A[-1]
 
@@ -322,7 +326,6 @@ class Network():
                 ax.text(i, 0.6, show1_df['PRED_LABEL'][i],bbox=dict(facecolor='red', alpha=0.5))
         plt.show()
 
-
     def network_training_summary_report(self):
         settings_file = self.name+".training_summary.txt"
         exit_path = os.path.join(self.build_path,settings_file)
@@ -352,12 +355,16 @@ class Network():
         print(self.cli_name+" Exporting Information File to "+self.build_path)
     
     #[TO BE CHANGED]
-    def inference(self,window_settings):
+    def inference(self,window_settings,sample):
         begin = time.time()
-        df = pd.read_csv(self.root_path+"/visual.csv",engine='python')
-        X_data = nets.cycleInference(df,netco.CYCLES_FEATURES,window_settings,self.root_path,True)
+        print(self.cli_name)
+        df = pd.read_csv(self.root_path+"/samples/"+sample,engine='python')
+
+        X_data = nets.cycleInference(df[['E_REV']],netco.CYCLES_FEATURES,window_settings,self.root_path,True)
         print(X_data)
+        
         n_X_data = normalizeDataFrame(X_data)
+        print(n_X_data)
         n_X_data = n_X_data.drop(["LABEL"],axis=1)
         n_X_data = n_X_data.values.transpose()
 
@@ -406,3 +413,4 @@ class Network():
         
         print(round(time.time()-begin,1),'Seconds')
         plt.show()
+        

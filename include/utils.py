@@ -10,7 +10,7 @@ from sklearn import preprocessing
 import numpy as np
 import math
 
-EPS = 1.0e-6
+EPS = 1.0e-5
 MAX_NULL = 1.0e4
 ACC_THRESHOLD = 0.002
 
@@ -49,7 +49,7 @@ def cleanTrendData(data_path,measurements,indeces):
         print(50*"-")
     return full_df
 
-# [Normalizing Datagrame Columns except for LABEL column]    
+# [Normalizing Dataframe Columns except for LABEL column]    
 def normalizeDataFrame(df):
     print("~$> Normalizing Dataframe")
     d = {}

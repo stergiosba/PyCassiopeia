@@ -148,11 +148,12 @@ class trainToplevelGUI(tk.Toplevel):
         if self.parent.network_edition.get() == netco.TREND: features = netco.TREND_FEATURES
         if self.parent.network_edition.get() == netco.SOC: features = netco.BATTERY_FEATURES
         if self.parent.network_edition.get() == netco.WENG: features = netco.WENG_FEATURES
-
+        
+        x_list_place = 121
         self.network_version = ttk.Combobox(self,state="readonly")
         self.network_version['values'] = sorted(networks)      
         self.network_version.current(0)
-        self.network_version.place(x=111,y=40)
+        self.network_version.place(x=x_list_place,y=40)
         self.network = net.Network(self.parent.network_edition.get(),netco.LOAD,self.network_version.get(),self.root_path,features)
         self.network.layers_import(self.network.version_path+"/network_structure.json")
 
@@ -167,29 +168,43 @@ class trainToplevelGUI(tk.Toplevel):
         epochs = ttk.Combobox(self,state="readonly")
         epochs['values'] = (1,5,10,20,50,80,100,200,500,1000,2000)
         epochs.current(0)
-        epochs.place(x=111,y=60)
+        epochs.place(x=x_list_place,y=60)
 
         learning_rate_l = tk.Label(self,text="Learning Rate:",bg=self['bg'],fg = "#EFB509")
         learning_rate_l.place(x=1,y=80)
         learning_rate = ttk.Combobox(self,state="readonly")
         learning_rate['values'] = (0.0001,0.001,0.01,0.1,1,10)
         learning_rate.current(0)
-        learning_rate.place(x=111,y=80)    
+        learning_rate.place(x=x_list_place,y=80)    
 
         mini_batch_l = tk.Label(self,text="Minibatch Size:",bg=self['bg'],fg = "#EFB509")
         mini_batch_l.place(x=1,y=100)
         mini_batch = ttk.Combobox(self,state="readonly")
         mini_batch['values'] = (32,64,128,256)
         mini_batch.current(0)
-        mini_batch.place(x=111,y=100)
+        mini_batch.place(x=x_list_place,y=100)
 
-        train_button = tk.Button(self,text="Train",command=lambda:self.network.train(int(epochs.get()),float(learning_rate.get()),int(mini_batch.get())))
-        train_button.place(x=111,y=140)
-        self.bind('<Return>', lambda event:self.parent.network.train(int(epochs.get()),float(learning_rate.get()),int(mini_batch.get())))
+        shuffle_l = tk.Label(self,text="Shuffle Data:",bg=self['bg'],fg = "#EFB509")
+        shuffle_l.place(x=1,y=120)
+        shuffle = ttk.Combobox(self,state="readonly")
+        shuffle['values'] = (True,False)
+        shuffle.current(0)
+        shuffle.place(x=x_list_place,y=120)
+
+        test_size_l = tk.Label(self,text="Train/Test Split %:",bg=self['bg'],fg = "#EFB509")
+        test_size_l.place(x=1,y=140)
+        test_size = ttk.Combobox(self,state="readonly")
+        test_size['values'] = (0.3,0.25,0.2,0.15,0.1)
+        test_size.current(0)
+        test_size.place(x=x_list_place,y=140)
+
+        train_button = tk.Button(self,text="Train",command=lambda:self.network.train(int(epochs.get()),float(learning_rate.get()),int(mini_batch.get()),shuffle.get(),float(test_size.get())))
+        train_button.place(x=x_list_place,y=180)
+        self.bind('<Return>', lambda event:self.network.train(int(epochs.get()),float(learning_rate.get()),int(mini_batch.get()),shuffle.get(),float(test_size.get())))
         
         self.mainloop()
 
-    def settingsGUI(self,title,width=400,heigth=200):
+    def settingsGUI(self,title,width=400,heigth=240):
         self.resizable(False, False)
         self.title(title)
         self.width = width
@@ -208,28 +223,50 @@ class inferenceToplevelGUI(tk.Toplevel):
         self.parent = parent
         self.root_path = os.getcwd()+'/models/'+self.parent.network_edition.get()+'/'+self.parent.model.get()
 
+        _label = tk.Label(self,text="Inference Parameters",bg=self['bg'],fg = "#EFB509")
+        _label.grid(row=0,column=0,sticky="nsew")
+
         networks = []
         for file in os.listdir(self.root_path):
             if os.path.isdir(os.path.join(self.root_path,file)):
                 networks.append(file)
 
+        if self.parent.network_edition.get() == netco.CYCLES: self.features = netco.CYCLES_FEATURES
+        if self.parent.network_edition.get() == netco.TREND: self.features = netco.TREND_FEATURES
+        if self.parent.network_edition.get() == netco.SOC: self.features = netco.BATTERY_FEATURES
+        if self.parent.network_edition.get() == netco.WENG: self.features = netco.WENG_FEATURES
+
         self.network_version = ttk.Combobox(self,state="readonly")
         self.network_version['values'] = sorted(networks)      
         self.network_version.current(0)
-        self.network_version.place(x=111,y=60)
+        self.network_version.place(x=111,y=40)
+
+        samples = []
+        for file in os.listdir(self.root_path+"/samples"):
+            samples.append(file)
+        samples = sorted(samples)
+
+        file = ttk.Combobox(self,state="readonly")
+        file['values'] = samples
+        file.current(0)
+        file.place(x=111,y=60)
         
-        train1_button = tk.Button(self,text="edition",command=lambda:self.load_trained_network())
-        train1_button.place(x=111,y=80)
+        load_inference_button = tk.Button(self,text="Inference",command=lambda:self.load_trained_network(file.get()))
+        load_inference_button.place(x=111,y=80)
+
+        self.bind('<Return>', lambda event:self.load_trained_network(file.get()))
         
         self.mainloop()
 
-    def load_trained_network(self):
+    def load_trained_network(self,sample):
+        network_edition = self.parent.network_edition.get()
         network_name = self.network_version.get()
         network_root_path = self.root_path
-        self.network = net.Network(netco.LOAD,network_name,network_root_path)
+        network_features = self.features
+        self.network = net.Network(network_edition,netco.LOAD,network_name,network_root_path,network_features)
         window_settings = self.parent.model.get().split('_')
         del window_settings[0]
-        self.network.inference(window_settings)
+        self.network.inference(window_settings,sample)
         
     def settingsGUI(self,title,width=400,heigth=200):
         self.resizable(False, False)

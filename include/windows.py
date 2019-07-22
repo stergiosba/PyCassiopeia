@@ -15,6 +15,8 @@ import pandas as pd
 import seaborn as sns
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+from matplotlib import cm
 
 from .utils import windowUnits,EPS,ACC_THRESHOLD
 import include.network.net_constants as netco
@@ -32,8 +34,6 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
     print("~$> Window size",w_size,"seconds.")
     print("~$> Window step",w_step,"seconds.")
     print(50*"-")
-    train_df = pd.DataFrame(columns=features_list)
-    test_df = pd.DataFrame(columns=features_list)
     fit_df = pd.DataFrame(columns=features_list)
     # [Finding maximum count of correct length windows]
     w_count = windowUnits(len(_data_df),w_size,w_step)
@@ -51,16 +51,14 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
                     continue
                 window_df = window_df.reset_index(drop=True)
                 # Checking for values below EPS and making them zero.
-                for i in window_df.index:
-                    if window_df[i]<EPS:
-                        window_df[i] = 0
+                window_df = window_df.apply(lambda x: x if x > EPS else 0)
                 # Initializing the counters
                 acc_list = []
                 dec_list = []
                 counter_P_N_030 = 0
                 counter_P_N_3050 = 0
-                counter_P_N_5080 = 0
-                counter_P_N_80100 = 0
+                counter_P_N_5070 = 0
+                counter_P_N_70100 = 0
                 counter_P_D_12 = 0
                 counter_P_D_23 = 0
                 for time_step in window_df.index:
@@ -68,10 +66,10 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
                         counter_P_N_030+=1
                     elif 0.30<window_df[time_step] and window_df[time_step]<0.50:
                         counter_P_N_3050+=1
-                    elif 0.50<window_df[time_step] and window_df[time_step]<0.80:
-                        counter_P_N_5080+=1
+                    elif 0.50<window_df[time_step] and window_df[time_step]<0.70:
+                        counter_P_N_5070+=1
                     else:
-                        counter_P_N_80100+=1
+                        counter_P_N_70100+=1
                     if time_step==0:
                         pass
                     else:
@@ -104,6 +102,7 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
                 Cycle_Final = Cycle_Final.append({
                 'LABEL': cycle,
                 'N_MAX': round(window_df.max(),4),
+                'N_AVE': round(window_df.mean(),4),
                 'A_MAX': round(max_win_acc,4),
                 'A_AVE': round(ave_win_acc,4),
                 'A_STD': round(std_win_acc,4),
@@ -111,33 +110,35 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
                 'D_AVE': round(ave_win_dec,4),
                 'P_N_030': round(counter_P_N_030/len(window_df),4),
                 'P_N_3050': round(counter_P_N_3050/len(window_df),4),
-                'P_N_5080': round(counter_P_N_5080/len(window_df),4),
-                'P_N_80100':round(counter_P_N_80100/len(window_df),4)
+                'P_N_5070': round(counter_P_N_5070/len(window_df),4),
+                'P_N_70100':round(counter_P_N_70100/len(window_df),4)
                 #'P_D_12':1,
                 #'P_D_23':1
                 },ignore_index=True)
+                prev_cycle = cycle
                 w_start+=w_step
                 w_end+=w_step
                 pbar.update(n=1)
             Cycle_Final = Cycle_Final.astype({'LABEL': int})
-            Cycle_Final_Train, Cycle_Final_Test = train_test_split(Cycle_Final, test_size=0.3, shuffle=False)
-        train_df = train_df.append(Cycle_Final_Train,sort=False,ignore_index=True)
-        test_df = test_df.append(Cycle_Final_Test,sort=False,ignore_index=True)
-        frames = [train_df,test_df]
-        fit_df = pd.concat(frames, ignore_index=True)
+        fit_df = fit_df.append(Cycle_Final,sort=False,ignore_index=True)
 
     print(50*"-")    
     print("~$> Plotting Pearson Correlation Matrix")
 
     correlations = fit_df[fit_df.columns].corr(method='pearson')
     heat_ax = sns.heatmap(correlations, cmap="YlGnBu", annot = True)
-
+    plt.show(block=False)
     if not os.path.exists(model_path): os.makedirs(model_path)
-
     fit_df.to_csv(model_path+"/"+netco.TRAINING+".csv",index=False)
+
+    finish = time.time()
+    print(50*"-")
+    print("~$> Time for data process was",round(finish-begin,2),"seconds.")
+    print(50*"-")
 
 def trendWindow(_data_df,features_list,measurements,window_settings,model_path):
     begin = time.time()
+
     #exit setting
     w_size = window_settings[0]
     w_step = window_settings[1]
@@ -153,7 +154,6 @@ def trendWindow(_data_df,features_list,measurements,window_settings,model_path):
     fit_df = pd.DataFrame(columns=features_list)
     w_start = 0
     w_end = w_size
-    co = 0
     print("~$> Total Windows Progression")
     with tqdm(total = w_count,desc = "~$> ",unit="win") as pbar:
         for window in range(_data_df.index.min(),_data_df.index.max(),w_step):
@@ -200,17 +200,13 @@ def trendWindow(_data_df,features_list,measurements,window_settings,model_path):
             w_start+=w_step
             w_end+=w_step
             prev_label = label
-            '''
-            co+=1
-            if (co >= 8000):
-                break
-            '''
             pbar.update(n=1)  
     print(50*"-")    
     print("~$> Plotting Pearson Correlation Matrix")
     correlations = fit_df[fit_df.columns].corr(method='pearson')
     heat_ax = sns.heatmap(correlations, cmap="YlGnBu", annot = True)
-    os.makedirs(model_path)
+    plt.show(block=False)
+    if not os.path.exists(model_path): os.makedirs(model_path)
     fit_df.to_csv(model_path+"/"+netco.TRAINING+".csv",index=False)
 
     finish = time.time()
