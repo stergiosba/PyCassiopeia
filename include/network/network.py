@@ -204,13 +204,13 @@ class Network():
             classification_outputs_classes = tf.saved_model.utils.build_tensor_info(prediction_classes)
             classification_outputs_scores = tf.saved_model.utils.build_tensor_info(values)
 
-            classification_signature = (tf.saved_model.signature_def_utils.build_signature_def(
+            classification_signature = (tf.compat.v1.saved_model.signature_def_utils.build_signature_def(
                 inputs={
-                    tf.saved_model.signature_constants.CLASSIFY_INPUTS:classification_inputs},
+                    tf.saved_model.CLASSIFY_INPUTS:classification_inputs},
                 outputs={
-                    tf.saved_model.signature_constants.CLASSIFY_OUTPUT_CLASSES:classification_outputs_classes,
-                    tf.saved_model.signature_constants.CLASSIFY_OUTPUT_SCORES:classification_outputs_scores},
-                method_name=tf.saved_model.signature_constants.CLASSIFY_METHOD_NAME))
+                    tf.saved_model.CLASSIFY_OUTPUT_CLASSES:classification_outputs_classes,
+                    tf.saved_model.CLASSIFY_OUTPUT_SCORES:classification_outputs_scores},
+                method_name=tf.saved_model.CLASSIFY_METHOD_NAME))
             
             tensor_info_x = tf.saved_model.utils.build_tensor_info(X)
             tensor_info_y = tf.saved_model.utils.build_tensor_info(final)
@@ -219,10 +219,10 @@ class Network():
                 tf.saved_model.signature_def_utils.build_signature_def(
                     inputs={'images': tensor_info_x},
                     outputs={'scores': tensor_info_y},
-                    method_name=tf.saved_model.signature_constants.PREDICT_METHOD_NAME))
+                    method_name=tf.saved_model.PREDICT_METHOD_NAME))
 
             builder.add_meta_graph_and_variables(
-                sess, [tf.saved_model.tag_constants.SERVING],
+                sess, [tf.saved_model.SERVING],
                 signature_def_map={
                     'predict_images':
                         prediction_signature,
@@ -243,7 +243,7 @@ class Network():
             self.predictions_train = sess.run(tf.argmax(final),feed_dict={X: X_train})
             self.predictions_test = sess.run(tf.argmax(final),feed_dict={X: X_test})
             self.predictions = np.concatenate((self.predictions_train,self.predictions_test),axis=0)
-            tf.summary.histogram("predictions", final)
+            tf.compat.v1.summary.histogram("predictions", final)
             # [Calculate accuracy on the test set]
             accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
             self.train_acc = round(100*accuracy.eval({X: X_train, Y: Y_train}),2)
@@ -371,7 +371,7 @@ class Network():
         self.layers_import(self.version_path+"/network_structure.json")
         self.graph = tf.Graph()
         with self.graph.as_default():
-            saver = tf.train.import_meta_graph(self.version_path+'/model.meta')
+            saver = tf.compat.v1.train.import_meta_graph(self.version_path+'/model.meta')
         with tf.Session(graph=self.graph) as sess:
             saver.restore(sess, self.version_path+"/model")
             final = self.graph.get_tensor_by_name("Final:0")

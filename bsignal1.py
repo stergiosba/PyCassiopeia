@@ -5,7 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 seed_offset = 0
 samples_path = "samples/"
-full_df = pd.read_pickle('templates_Euclidean barycenter_clusters7.pkl').T
+#full_df = pd.read_pickle('templates_Euclidean barycenter_clusters7.pkl').T
+full_df = pd.read_pickle('swap_corrected_templates_soft_dtw_clusters7_gamma1.pkl')
 full_df = full_df.head(1600)
 samples = 10
 
@@ -27,5 +28,6 @@ for sample in range(samples):
     sample_df = sample_df.stack().reset_index()
     sample_df = sample_df.drop(sample_df.columns[0], axis=1)
     sample_df.columns = ['LABEL','E_REV']
+    sample_df['E_REV'] = sample_df['E_REV']
     sample_df.to_csv(samples_path+'sample_'+str(sample)+'.csv',index=False)
 

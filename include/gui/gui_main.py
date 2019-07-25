@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from numpy.random import seed
-from tensorflow import set_random_seed
+#from tensorflow import set_random_seed
 import matplotlib.pyplot as plt
 
 from include.network import network
