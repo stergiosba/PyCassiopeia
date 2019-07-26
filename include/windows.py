@@ -21,7 +21,7 @@ from matplotlib import cm
 from .utils import windowUnits,EPS,ACC_THRESHOLD
 import include.network.net_constants as netco
 
-
+#[DEPRECATED]
 def cycleWindow(_data_df,features_list,window_settings,model_path):
     begin = time.time()
 
@@ -36,7 +36,7 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
     print(50*"-")
     fit_df = pd.DataFrame(columns=features_list)
     # [Finding maximum count of correct length windows]
-    w_count = windowUnits(len(_data_df),w_size,w_step)
+    w_count = windowUnits(len(_data_df)-1,w_size-1,w_step)
 
     print("~$> Total Windows Progression")
     for cycle in _data_df:
@@ -94,7 +94,7 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
                     max_win_acc = 0
                     std_win_acc = 0
                 elif len(acc_list) == 1:
-                    std_win_acc == 0
+                    std_win_acc = 0
                 else:
                     ave_win_acc = stats.mean(acc_list)
                     max_win_acc = max(acc_list)
@@ -111,7 +111,9 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
                 'P_N_030': round(counter_P_N_030/len(window_df),4),
                 'P_N_3050': round(counter_P_N_3050/len(window_df),4),
                 'P_N_5070': round(counter_P_N_5070/len(window_df),4),
-                'P_N_70100':round(counter_P_N_70100/len(window_df),4)
+                'P_N_70100':round(counter_P_N_70100/len(window_df),4),
+                'W_START': w_start,
+                'W_END': w_end
                 #'P_D_12':1,
                 #'P_D_23':1
                 },ignore_index=True)
@@ -127,7 +129,7 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
 
     correlations = fit_df[fit_df.columns].corr(method='pearson')
     heat_ax = sns.heatmap(correlations, cmap="YlGnBu", annot = True)
-    plt.show(block=False)
+    #plt.show()
     if not os.path.exists(model_path): os.makedirs(model_path)
     fit_df.to_csv(model_path+"/"+netco.TRAINING+".csv",index=False)
 
@@ -205,7 +207,7 @@ def trendWindow(_data_df,features_list,measurements,window_settings,model_path):
     print("~$> Plotting Pearson Correlation Matrix")
     correlations = fit_df[fit_df.columns].corr(method='pearson')
     heat_ax = sns.heatmap(correlations, cmap="YlGnBu", annot = True)
-    plt.show(block=False)
+    #plt.show(block=False)
     if not os.path.exists(model_path): os.makedirs(model_path)
     fit_df.to_csv(model_path+"/"+netco.TRAINING+".csv",index=False)
 

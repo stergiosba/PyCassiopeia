@@ -137,17 +137,21 @@ class Network():
         X_test = X_test.drop(["LABEL"],axis=1)
         X_train = X_train.values.transpose()
         X_test = X_test.values.transpose()
+        Y_fake = X_data[['LABEL']]
+        X_fake = X_data.drop(["LABEL"],axis=1)
+        print(X_fake)
+        X_fake = X_fake.values.transpose()
 
-        tf.set_random_seed(1)
-        tf.reset_default_graph()
+        tf.compat.v1.set_random_seed(1)
+        tf.compat.v1.reset_default_graph()
         seed = 3
         (n_x, m) = X_train.shape
         n_y = Y_train.shape[0]
         costs = []
         with self.graph.as_default():
-            serialized_tf_example = tf.placeholder(tf.string, name='tf_example')
-            feature_configs = {'x': tf.FixedLenFeature(shape=[n_y], dtype=tf.float32),}
-            tf_example = tf.parse_example(serialized_tf_example, feature_configs)
+            serialized_tf_example = tf.compat.v1.placeholder(tf.string, name='tf_example')
+            feature_configs = {'x': tf.io.FixedLenFeature(shape=[n_y], dtype=tf.float32),}
+            tf_example = tf.io.parse_example(serialized_tf_example, feature_configs)
             # [Create Placeholders of shape (n_x, n_y)]
             X, Y = nets.create_placeholders(n_x, n_y)
             # [Initialize layer parameters]
@@ -157,16 +161,17 @@ class Network():
             final = tf.identity(final, name="Final")
             # [Adding cost function for the Adam optimizer to the graph]
             cost = nets.function_cross_entropy(final, Y)
-            optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
-            saver = tf.train.Saver()
-        with tf.Session(graph=self.graph) as sess:
+            optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate).minimize(cost)
+            saver = tf.compat.v1.train.Saver()
+        with tf.compat.v1.Session(graph=self.graph) as sess:
             # [Session Initialization]
             sess.run(tf.global_variables_initializer())
             values, indices = tf.nn.top_k(final, n_y)
             table = tf.contrib.lookup.index_to_string_table_from_tensor(tf.constant([str(i) for i in range(n_y)]))
-            prediction_classes = table.lookup(tf.to_int64(indices))
-            builder = tf.saved_model.builder.SavedModelBuilder(self.build_path)
-            train_writer = tf.summary.FileWriter(self.version_path+"/train", sess.graph)
+            #prediction_classes = table.lookup(tf.to_int64(indices))
+            prediction_classes = table.lookup(tf.cast(indices,tf.int64))
+            builder = tf.compat.v1.saved_model.builder.SavedModelBuilder(self.build_path)
+            train_writer = tf.compat.v1.summary.FileWriter(self.version_path+"/train", sess.graph)
 
             # [Training loop]
             print(self.cli_name+"\n")
@@ -216,7 +221,7 @@ class Network():
             tensor_info_y = tf.saved_model.utils.build_tensor_info(final)
 
             prediction_signature = (
-                tf.saved_model.signature_def_utils.build_signature_def(
+                tf.compat.v1.saved_model.signature_def_utils.build_signature_def(
                     inputs={'images': tensor_info_x},
                     outputs={'scores': tensor_info_y},
                     method_name=tf.saved_model.PREDICT_METHOD_NAME))
@@ -226,7 +231,7 @@ class Network():
                 signature_def_map={
                     'predict_images':
                         prediction_signature,
-                    tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
+                    tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
                         classification_signature,
                 },
                 main_op=tf.tables_initializer(),
@@ -250,8 +255,14 @@ class Network():
             self.test_acc = round(100*accuracy.eval({X: X_test, Y: Y_test}),2)
             print(self.cli_name+" Train Accuracy:", accuracy.eval({X: X_train, Y: Y_train}))
             print(self.cli_name+" Test Accuracy:", accuracy.eval({X: X_test, Y: Y_test}))
-            saver.save(sess, self.version_path+'/model')
+            saver.save(sess, self.version_path+'/model.ckpt')
+            tt=pd.DataFrame(sess.run(tf.argmax(final),feed_dict={X: X_fake}))
+            ax = Y_fake.plot()
+            tt.plot(ax=ax)
+            plt.savefig(self.build_path+'/trained_model.pdf')
+
             self.network_training_summary_report()
+            plt.show()
 
         return self.predictions
         
@@ -269,10 +280,10 @@ class Network():
         for layer_counter,layer in enumerate(self.structure,start=1):
             name_W = "W"+str(layer_counter)
             name_b = "b"+str(layer_counter)
-            with tf.variable_scope('Weights'):
-                self.layers[name_W] = tf.get_variable(name_W, [layer[0], layer[1]], initializer = tf.contrib.layers.xavier_initializer(seed=1))
-            with tf.variable_scope('Biases'):
-                self.layers[name_b] = tf.get_variable(name_b, [layer[0], 1], initializer = tf.zeros_initializer())
+            with tf.compat.v1.variable_scope('Weights'):
+                self.layers[name_W] = tf.compat.v1.get_variable(name_W, [layer[0], layer[1]], initializer = tf.contrib.layers.xavier_initializer(seed=1))
+            with tf.compat.v1.variable_scope('Biases'):
+                self.layers[name_b] = tf.compat.v1.get_variable(name_b, [layer[0], 1], initializer = tf.zeros_initializer())
             
     def forward_propagation(self,X):
         Z = []
@@ -359,25 +370,23 @@ class Network():
         begin = time.time()
         print(self.cli_name)
         df = pd.read_csv(self.root_path+"/samples/"+sample,engine='python')
-
+        df = df.head(1000)
         X_data = nets.cycleInference(df[['E_REV']],netco.CYCLES_FEATURES,window_settings,self.root_path,True)
-        print(X_data)
-        
+
         n_X_data = normalizeDataFrame(X_data)
-        print(n_X_data)
         n_X_data = n_X_data.drop(["LABEL"],axis=1)
         n_X_data = n_X_data.values.transpose()
-
         self.layers_import(self.version_path+"/network_structure.json")
         self.graph = tf.Graph()
+        
         with self.graph.as_default():
-            saver = tf.compat.v1.train.import_meta_graph(self.version_path+'/model.meta')
-        with tf.Session(graph=self.graph) as sess:
-            saver.restore(sess, self.version_path+"/model")
+            saver = tf.compat.v1.train.import_meta_graph(self.version_path+'/model.ckpt.meta')
+        
+        with tf.compat.v1.Session(graph=self.graph) as sess:
+            saver.restore(sess, self.version_path+"/model.ckpt")
             final = self.graph.get_tensor_by_name("Final:0")
             X = self.graph.get_tensor_by_name("X:0")
-            self.predictions_visual = sess.run(tf.argmax(final),feed_dict={X: n_X_data})
-
+            self.predictions = sess.run(tf.argmax(final),feed_dict={X: n_X_data})
         font = {'family': 'serif',
             'color':  'darkred',
             'weight': 'normal',
@@ -395,7 +404,7 @@ class Network():
         hold = 0
         prev_hold = 0
         for i in range(len(X_data)):
-            if self.predictions_visual[i]!=self.predictions_visual[i-1]:
+            if self.predictions[i]!=self.predictions[i-1]:
                 hold = int(window_settings[0])+i*int(window_settings[1])
                 x_lines.append([prev_hold-1,hold-1,i-1])
                 prev_hold = hold
@@ -405,12 +414,14 @@ class Network():
         for pair in x_lines:
             xs = np.arange(pair[0], pair[1])
             ys = xs*0+0.5
-            prediction = str(self.predictions_visual[pair[2]])
+            prediction = str(self.predictions[pair[2]])
             ax.text((pair[0]+pair[1])/2, 0.6, prediction,bbox=dict(facecolor='red', alpha=0.5))
             plt.plot(xs, ys,'-b')
             plt.plot(pair[0], 0.5, 'b<')
             plt.plot(pair[1]-1, 0.5, 'b>')
         
         print(round(time.time()-begin,1),'Seconds')
+        
         plt.show()
+        
         

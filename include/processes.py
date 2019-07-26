@@ -34,7 +34,8 @@ def cycleProcess(data_path,model_path,features_list,window_settings):
     print("~$> Initializing Data Processing")
     print(50*"#")
     print("~$> Loading the dataset from " + data_path)
-    full_df = pd.read_pickle(data_path+'/templates_Euclidean barycenter_clusters7.pkl').T
+    full_df = pd.read_pickle(data_path+'/swap_corrected_templates_soft_dtw_clusters7_gamma1.pkl')
+    full_df = full_df.head(1600)
     print("~$> Loaded the dataset")
     cycleWindow(full_df, features_list, window_settings, model_path)
     

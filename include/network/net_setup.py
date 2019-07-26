@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed Feb 27 13:32:40 2019
-
 @author: Khanax
 """
 import math
@@ -34,8 +33,8 @@ def labelMaker(data, nb_classes):
 # n_x = num__input_features
 # n_y = expected output (num classes)
 def create_placeholders(n_x, n_y):
-    X1 = tf.placeholder(tf.float32, [n_x, None], name="X")
-    Y1 = tf.placeholder(tf.float32, [n_y, None], name="Y")
+    X1 = tf.compat.v1.placeholder(tf.float32, [n_x, None], name="X")
+    Y1 = tf.compat.v1.placeholder(tf.float32, [n_y, None], name="Y")
     return X1, Y1
 
 def function_cross_entropy(final_layer, Y):
@@ -159,7 +158,7 @@ def cycleInference(_data_df,_features_list,_window_settings,__model_path,_csv_fl
             max_win_acc = 0
             std_win_acc = 0
         elif len(acc_list) == 1:
-            std_win_acc == 0
+            std_win_acc = 0
         else:
             ave_win_acc = stats.mean(acc_list)
             max_win_acc = max(acc_list)

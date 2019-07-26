@@ -43,7 +43,7 @@ class windowsFrame(tk.Frame):
         cycles_window_size_l = tk.Label(windows_set_canvas,text="Window Size:",bg=windows_set_canvas['bg'],fg=parent.theme.selected_fg)
         cycles_window_size_l.place(x=401,y=40)
         cycles_window_size = ttk.Combobox(windows_set_canvas,state="readonly")
-        cycles_window_size['values'] = (10,20,30,60,90,180)
+        cycles_window_size['values'] = (5,10,20,30,60,90,180)
         cycles_window_size.current(0)
         cycles_window_size.place(x=511,y=40)
 

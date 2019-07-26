@@ -180,8 +180,8 @@ class trainToplevelGUI(tk.Toplevel):
         mini_batch_l = tk.Label(self,text="Minibatch Size:",bg=self['bg'],fg = "#EFB509")
         mini_batch_l.place(x=1,y=100)
         mini_batch = ttk.Combobox(self,state="readonly")
-        mini_batch['values'] = (32,64,128,256)
-        mini_batch.current(0)
+        mini_batch['values'] = (8,16,32,64,128,256)
+        mini_batch.current(2)
         mini_batch.place(x=x_list_place,y=100)
 
         shuffle_l = tk.Label(self,text="Shuffle Data:",bg=self['bg'],fg = "#EFB509")
