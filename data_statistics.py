@@ -26,8 +26,5 @@ print(data_5.describe().T)
 print(data_6.describe().T)
 sns.pairplot(data[["LABEL","N_MAX", "N_AVE"]], diag_kind="kde",hue='LABEL')
 
-
-
-
 #data.plot()
 plt.show()

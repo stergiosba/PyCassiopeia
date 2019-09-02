@@ -12,7 +12,7 @@ import math
 
 EPS = 1.0e-5
 MAX_NULL = 1.0e4
-ACC_THRESHOLD = 0.002
+ACC_THRESHOLD = 0.001
 
 # [Mathematical solution for proper window sizes]
 def windowUnits(max_length,size,step):

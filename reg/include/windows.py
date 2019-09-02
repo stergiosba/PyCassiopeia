@@ -228,6 +228,9 @@ def trendWindow2(_data_df,features_list,measurements,window_settings,model_path)
     print(50*"-")
 '''
 def trendWindow(_data_df,features_list,window_settings,model_path):
+    '''
+    trendWindow(_data_df,features_list,window_settings,model_path):
+    '''
     begin = time.time()
     #exit setting
     w_size = window_settings[0]
@@ -271,8 +274,8 @@ def trendWindow(_data_df,features_list,window_settings,model_path):
                 in_win_revs = round(window_df[window_df.index.min()],4)
                 out_win_revs = round(window_df[window_df.index.max()],4)
 
-                if w_start == 0:                    
-                    if (ave_win_revs>EPS and ave_win_revs<0.3):
+                if w_start == 0:
+                    if (ave_win_revs>=0 and ave_win_revs<0.3):
                         label = 1 #Low Speed Steady
                     elif (ave_win_revs>0.3 and ave_win_revs<0.6):
                         label = 2 #Mid Speed Steady
@@ -300,28 +303,80 @@ def trendWindow(_data_df,features_list,window_settings,model_path):
                     'N_AVE': ave_win_revs,
                     'N_IN' : in_win_revs,
                     'N_OUT': out_win_revs,
-                    'A_AVE': ave_win_acc,
-                    'W_START': w_start,
-                    'W_END': w_end
+                    'A_AVE': ave_win_acc
+                    #'W_START': w_start,
+                    #'W_END': w_end
                 },ignore_index=True)
                 prev_label = label
                 w_start+=w_step
                 w_end+=w_step
                 pbar.update(n=1)
             Cycle_Final = Cycle_Final.astype({'LABEL': int})
-            if not os.path.exists(model_path): os.makedirs(model_path)
-            Cycle_Final.to_csv(os.path.join(model_path,netco.TRAINING+"_"+str(cycle)+".csv"),index=False)
+            #if not os.path.exists(model_path): os.makedirs(model_path)
+            #Cycle_Final.to_csv(os.path.join(model_path,netco.TRAINING+"_"+str(cycle)+".csv"),index=False)
         fit_df = fit_df.append(Cycle_Final,sort=False,ignore_index=True)
 
     print(50*"-")    
     print("~$> Plotting Pearson Correlation Matrix")
 
-    correlations = fit_df[fit_df.columns].corr(method='pearson')
-    heat_ax = sns.heatmap(correlations, cmap="YlGnBu", annot = True)
+    #correlations = fit_df[fit_df.columns].corr(method='pearson')
+    #heat_ax = sns.heatmap(correlations, cmap="YlGnBu", annot = True)
     #plt.show()
-    if not os.path.exists(model_path): os.makedirs(model_path)
-    fit_df.to_csv(model_path+"/"+netco.TRAINING+".csv",index=False)
+    #if not os.path.exists(model_path): os.makedirs(model_path)
+    #fit_df.to_csv(model_path+"/"+netco.TRAINING+".csv",index=False)
     finish = time.time()
     print(50*"-")
     print("~$> Time for data process was",round(finish-begin,2),"seconds.")
     print(50*"-")
+    return fit_df
+
+def onlineTrendPrediction(window_df):
+    '''
+    onlineTrendPrediction(_data_df,features_list):
+    '''
+    #exit setting
+    w_size = len(window_df)
+    w_step = 1
+    features_list = netco.TREND_FEATURES
+    fit_df = pd.DataFrame(columns=features_list)
+    window_df = window_df.apply(lambda x: x if x > EPS else 0)
+    acc_list = []
+    for time_step in window_df.index:
+        if time_step==0:
+            pass
+        else:
+            acc = window_df[time_step]-window_df[time_step-1]
+            acc_list.append(acc)
+    ave_win_acc = round(stats.mean(acc_list),4)
+    max_win_revs = round(window_df.max(),4)
+    min_win_revs = round(window_df.min(),4)
+    ave_win_revs = round(window_df.mean(),4)
+    in_win_revs = round(window_df[window_df.index.min()],4)
+    out_win_revs = round(window_df[window_df.index.max()],4)
+
+    if (ave_win_revs<EPS and max_win_revs==0 and min_win_revs==0):
+        label = 0 #Dead Stop
+    elif (ave_win_revs>EPS and ave_win_revs<0.3 and ave_win_acc<ACC_THRESHOLD and ave_win_acc>-ACC_THRESHOLD):
+        label = 1 #Low Speed Steady
+    elif (ave_win_revs>0.3 and ave_win_revs<0.6 and ave_win_acc<ACC_THRESHOLD and ave_win_acc>-ACC_THRESHOLD):
+        label = 2 #Mid Speed Steady
+    elif (ave_win_revs>0.6 and ave_win_acc<ACC_THRESHOLD and ave_win_acc>-ACC_THRESHOLD):
+        label = 3 #High Speed Steady
+    elif (ave_win_acc>=ACC_THRESHOLD):
+        label = 4 #Acceleration
+    elif (ave_win_acc<=-ACC_THRESHOLD):
+        label = 5 #Deceleration
+
+    fit_df = fit_df.append({
+        'LABEL': label,
+        'N_MAX': max_win_revs,
+        'N_MIN': min_win_revs,
+        'N_AVE': ave_win_revs,
+        'N_IN' : in_win_revs,
+        'N_OUT': out_win_revs,
+        'A_AVE': ave_win_acc
+        #'W_START': w_start,
+        #'W_END': w_end
+    },ignore_index=True)
+    #prev_label = label
+    return fit_df
