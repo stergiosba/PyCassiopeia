@@ -63,7 +63,7 @@ class creationToplevelClassificationGUI(tk.Toplevel):
                 if i>0:
                     self.inValues[i].set(values_out[i-1])
                 if len(values_in[i]) > 3:
-                    self.inValuest[i].set(values_in[i][:3])        
+                    self.inValues[i].set(values_in[i][:3])        
 
         self.inValues = []
         self.outValues = []
@@ -421,8 +421,8 @@ class creationToplevelControlGUI(tk.Toplevel):
         controller_cycle_path = os.path.join(self.parent.controllers_root_path,self.nncontroller,netco.CYCLE+'_'+working_cycle)
         if not os.path.exists(controller_cycle_path): os.makedirs(os.path.join(controller_cycle_path))
         
-        self.network_ice = net.Network(netco.ENGINE,netco.CREATE,netco.NN_ENG,controller_cycle_path,netco.ENG_FEATURES)
-        self.network_emot = net.Network(netco.MOTOR,netco.CREATE,netco.NN_EMOT,controller_cycle_path,netco.EMOT_FEATURES)
+        self.network_ice = net.NNRegressor(netco.ENGINE,netco.CREATE,netco.NN_ENG,controller_cycle_path,netco.ENG_FEATURES)
+        self.network_emot = net.NNRegressor(netco.MOTOR,netco.CREATE,netco.NN_EMOT,controller_cycle_path,netco.EMOT_FEATURES)
         structure_ice_data = []
         structure_emot_data = []
         
@@ -516,11 +516,11 @@ class trainToplevelControlGUI(tk.Toplevel):
         self.networks_emot = []
         for cycle in range(netco.CYCLES_OUTPUTS):
             cycle_path = os.path.join(self.controller_path,netco.CYCLE+"_"+str(cycle))
-            network_ice = net.Network(netco.ENGINE,netco.LOAD,netco.NN_ENG+'_1',cycle_path,netco.ENG_FEATURES)
+            network_ice = net.NNRegressor(netco.ENGINE,netco.LOAD,netco.NN_ENG+'_1',cycle_path,netco.ENG_FEATURES)
             network_ice.layers_import(network_ice.version_path+"/network_structure.json")
             self.networks_ice.append(network_ice)
 
-            network_emot = net.Network(netco.MOTOR,netco.LOAD,netco.NN_EMOT+'_1',cycle_path,netco.EMOT_FEATURES)
+            network_emot = net.NNRegressor(netco.MOTOR,netco.LOAD,netco.NN_EMOT+'_1',cycle_path,netco.EMOT_FEATURES)
             network_emot.layers_import(network_ice.version_path+"/network_structure.json")
             self.networks_emot.append(network_emot)
 
@@ -654,7 +654,7 @@ class trainToplevelControlGUI(tk.Toplevel):
             list_values = ['']
         self.model_trend['values'] = list_values
 
-class inferenceToplevelGUI(tk.Toplevel):
+class inferenceToplevelControlGUI(tk.Toplevel):
     def __init__(self,parent):
         tk.Toplevel.__init__(self)
         self.parent = parent
@@ -671,30 +671,28 @@ class inferenceToplevelGUI(tk.Toplevel):
 
         if self.parent.network_edition.get() == netco.CYCLES: self.features = netco.CYCLES_FEATURES
         if self.parent.network_edition.get() == netco.TREND: self.features = netco.TREND_FEATURES
-        if self.parent.network_edition.get() == netco.PBAT: self.features = netco.BATTERY_FEATURES
-        if self.parent.network_edition.get() == netco.WENG: self.features = netco.WENG_FEATURES
 
         self.network_version = ttk.Combobox(self,state="readonly")
         self.network_version['values'] = sorted(networks)      
         self.network_version.current(0)
         self.network_version.place(x=111,y=40)
-
+        
         samples = []
         for file in os.listdir(self.root_path+"/samples"):
             samples.append(file)
         samples = sorted(samples)
 
-        file = ttk.Combobox(self,state="readonly")
-        file['values'] = samples
-        file.current(0)
-        file.place(x=111,y=60)
+        sample_file = ttk.Combobox(self,state="readonly")
+        sample_file['values'] = samples
+        sample_file.current(0)
+        sample_file.place(x=111,y=60)
         
-        load_inference_button = tk.Button(self,text="Inference",command=lambda:self.load_trained_network(file.get()))
+        load_inference_button = tk.Button(self,text="Inference",command=lambda:self.load_trained_network(sample_file.get()))
         load_inference_button['bg'] = self.parent.parent.theme.bg
         load_inference_button['fg'] = self.parent.parent.theme.fg
         load_inference_button.place(x=111,y=80)
 
-        self.bind('<Return>', lambda event:self.load_trained_network(file.get()))
+        self.bind('<Return>', lambda event:self.load_trained_network(sample_file.get()))
         
         self.mainloop()
 
@@ -703,10 +701,10 @@ class inferenceToplevelGUI(tk.Toplevel):
         network_name = self.network_version.get()
         network_root_path = self.root_path
         network_features = self.features
-        self.network = net.Network(network_edition,netco.LOAD,network_name,network_root_path,network_features)
+        self.network = net.NNClassifier(network_edition,netco.LOAD,network_name,network_root_path,network_features)
         window_settings = self.parent.model.get().split('_')
         del window_settings[0]
-        self.network.inference(window_settings,sample)
+        self.network.inference(sample,window_settings)
         
     def settingsGUI(self,title,width=400,heigth=200):
         self.resizable(False, False)

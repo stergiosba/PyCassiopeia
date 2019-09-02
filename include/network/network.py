@@ -18,10 +18,12 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
+import scipy.io
 
 import include.network.net_constants as netco
 import include.network.net_setup as nets
 from include.utils import normalizeDataFrame
+from include.network.online import onlinePrediction
 #tf.reset_default_graph()   # To clear the defined variables and operations of the previous cell
 # create grap
 
@@ -259,14 +261,15 @@ class Network():
             print(self.cli_name+" Train Accuracy:", accuracy.eval({X: X_train, Y: Y_train}))
             print(self.cli_name+" Test Accuracy:", accuracy.eval({X: X_test, Y: Y_test}))
             saver.save(sess, self.version_path+'/model.ckpt')
-            
-            tt=pd.DataFrame(sess.run(output_function(final),feed_dict={X: X_fake})).T
+            '''
+            tt=pd.DataFrame(sess.run(output_function(final),feed_dict={X: X_fake}))
             ax = Y_fake.plot()
             tt.plot(ax=ax)
             plt.savefig(self.build_path+'/trained_model.pdf')
-
+            '''
             self.network_training_summary_report()
-            plt.show()
+            #plt.show()
+            
         return self.predictions
         
     def init_layers(self):
@@ -355,7 +358,9 @@ class Network():
 
     def network_training_summary_report(self):
         settings_file = self.name+".training_summary.txt"
+        layers_matlab_file = self.name+".layers.m"
         exit_path = os.path.join(self.build_path,settings_file)
+        layers_path = os.path.join(self.build_path,layers_matlab_file)
         lines = [
                 '[GENERAL-INFORMATION]',
                 'Network Edition: ' + self.edition,
@@ -380,8 +385,8 @@ class Network():
             for line in lines:
                 file.write(line+'\n')
         print(self.cli_name+" Exporting Information File to "+self.build_path)
-    
-    
+        scipy.io.savemat(layers_path, self.layers)
+
     def inference(self,window_settings,sample):
         '''[TO BE CHANGED]'''
         begin = time.time()
@@ -440,5 +445,53 @@ class Network():
         print(round(time.time()-begin,1),'Seconds')
         
         plt.show()
+
+class NNClassifier(Network):
+    def __init__(self,edition,flag,base_name,root_path,features):
+        Network.__init__(self,edition,flag,base_name,root_path,features)
+
+    def inference(self,data,window_settings):
+        full_df = pd.read_csv(os.path.join(self.root_path,'samples',data))
+        test_df = full_df[['E_REV']]
+        self.layers_import(self.version_path+"/network_structure.json")
+        self.graph = tf.Graph()
         
+        with self.graph.as_default():
+            saver = tf.compat.v1.train.import_meta_graph(self.version_path+'/model.ckpt.meta')
+        targets=[]
+        # Start reading datas
+        low_indx = 0
+        high_indx = 0
+        for index, row in test_df.iterrows():
+            if index<int(window_settings[0]):
+                targets.append(row[0])
+            else:
+                low_indx+=1
+                print(50*'-')
+                del targets[0]
+                targets.append(row[0])
+                window_df = pd.Series(targets)
+                X_data = onlinePrediction(self.edition,window_df)
+                print(window_df)
+                n_X_data = normalizeDataFrame(X_data).T
+                with tf.compat.v1.Session(graph=self.graph) as sess:
+                    saver.restore(sess, self.version_path+"/model.ckpt")
+                    final = self.graph.get_tensor_by_name("Final:0")
+                    X = self.graph.get_tensor_by_name("X:0")
+                    self.predictions = sess.run(tf.argmax(final),feed_dict={X: n_X_data})
+                    print(self.predictions)
+                #required_df = full_df.iloc[high]
+                #required_df['LABEL'] = go['LABEL'][0]
+                #print(required_df)
+            high_indx+=1
         
+
+
+class NNRegressor(Network):
+    def __init__(self,edition,flag,base_name,root_path,features):
+        Network.__init__(self,edition,flag,base_name,root_path,features)
+
+    def inference(self,data):
+        sim_dir = os.path.join(os.getcwd(),netco.SIMULATIONS)
+        sim_df = pd.read_csv(os.path.join(sim_dir,'simulation_0.csv'))
+

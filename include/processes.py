@@ -41,6 +41,7 @@ def cycleProcess(data_path,model_path,features_list,window_settings):
     print("~$> Loading the dataset from " + data_path)
     full_df = pd.read_csv(data_path+'/swap_corrected_templates_soft_dtw_clusters7_gamma1.csv')
     full_df = full_df.head(1600)
+    print(full_df)
     print("~$> Loaded the dataset")
     cycleWindow(full_df, features_list, window_settings, model_path)
     

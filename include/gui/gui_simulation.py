@@ -7,7 +7,7 @@ from tkinter import ttk
 import numpy as np
 import pandas as pd
 
-from .gui_toplevels import creationToplevelClassificationGUI, trainToplevelClassificationGUI, trainToplevelControlGUI, inferenceToplevelGUI
+from .gui_toplevels import creationToplevelClassificationGUI, trainToplevelClassificationGUI, trainToplevelControlGUI, inferenceToplevelControlGUI
 from .gui_main import cycles_windows_execute,trend_windows_execute
 import include.network.network as net
 import include.network.net_constants as netco

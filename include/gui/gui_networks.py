@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .gui_toplevels import creationToplevelClassificationGUI, trainToplevelClassificationGUI
-from .gui_toplevels import creationToplevelControlGUI, trainToplevelControlGUI, inferenceToplevelGUI
+from .gui_toplevels import creationToplevelControlGUI, trainToplevelControlGUI, inferenceToplevelControlGUI
 from .gui_main import cycles_windows_execute,trend_windows_execute
 import include.network.network as net
 import include.network.net_constants as netco
@@ -111,7 +111,7 @@ class classficiationNetworksFrame(tk.Frame):
         _win = trainToplevelClassificationGUI(self)
 
     def gen_inference_box(self):
-        _win = inferenceToplevelGUI(self)
+        _win = inferenceToplevelControlGUI(self)
 
 class controlNetworksFrame(tk.Frame):
     '''Frame for the control networks.
@@ -229,4 +229,4 @@ class controlNetworksFrame(tk.Frame):
         _win = trainToplevelControlGUI(self)
 
     def gen_inference_box(self):
-        _win = inferenceToplevelGUI(self)
+        _win = inferenceToplevelControlGUI(self)
