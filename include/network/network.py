@@ -472,17 +472,17 @@ class NNClassifier(Network):
                 targets.append(row[0])
                 window_df = pd.Series(targets)
                 X_data = onlinePrediction(self.edition,window_df)
-                print(window_df)
                 n_X_data = normalizeDataFrame(X_data).T
                 with tf.compat.v1.Session(graph=self.graph) as sess:
                     saver.restore(sess, self.version_path+"/model.ckpt")
                     final = self.graph.get_tensor_by_name("Final:0")
                     X = self.graph.get_tensor_by_name("X:0")
                     self.predictions = sess.run(tf.argmax(final),feed_dict={X: n_X_data})
-                    print(self.predictions)
                 #required_df = full_df.iloc[high]
                 #required_df['LABEL'] = go['LABEL'][0]
                 #print(required_df)
+                print(low_indx,high_indx)
+                print(self.predictions)
             high_indx+=1
         
 

@@ -20,7 +20,7 @@ from include.utils import normalizeDataFrame
 def onlinePrediction(edition,window_df):
     window_df = window_df.apply(lambda x: x if x > EPS else 0)
     if edition == netco.CYCLES:
-        fit_df = pd.DataFrame(columns=netco.CYCLES_FEATURES.remove('LABEL'))
+        fit_df = pd.DataFrame(columns=netco.CYCLES_FEATURES.copy().remove('LABEL'))
         acc_list = []
         dec_list = []
         counter_P_N_030 = 0
@@ -62,6 +62,8 @@ def onlinePrediction(edition,window_df):
             std_win_acc = 0
         elif len(acc_list) == 1:
             std_win_acc = 0
+            max_win_acc = acc_list[0]
+            ave_win_acc = acc_list[0]
         else:
             ave_win_acc = stats.mean(acc_list)
             max_win_acc = max(acc_list)
@@ -83,7 +85,7 @@ def onlinePrediction(edition,window_df):
         },ignore_index=True)
 
     if edition == netco.TREND:
-        fit_df = pd.DataFrame(columns=netco.TREND_FEATURES.remove('LABEL'))
+        fit_df = pd.DataFrame(columns=netco.TREND_FEATURES.copy().remove('LABEL'))
         acc_list = []
         for time_step in window_df.index:
             if time_step==0:

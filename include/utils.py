@@ -56,12 +56,19 @@ def normalizeDataFrame(df):
     print("~$> Normalizing Dataframe")
     d = {}
     min_max_scaler = preprocessing.MinMaxScaler()
-    saved_labels = df[['LABEL']]
-    x_scaled = min_max_scaler.fit_transform(df.values)
-    for i in range(len(df.columns)):
-        d[df.columns[i]]=x_scaled[:,i]
-    print("~$> Dataframe has been normalized")
-    final_df = pd.DataFrame(data=d)
-    final_df['LABEL'] = saved_labels
+    if 'LABEL' in df.columns :
+        saved_labels = df[['LABEL']]
+        x_scaled = min_max_scaler.fit_transform(df.values)
+        for i in range(len(df.columns)):
+            d[df.columns[i]]=x_scaled[:,i]
+        print("~$> Dataframe has been normalized")
+        final_df = pd.DataFrame(data=d)
+        final_df['LABEL'] = saved_labels
+    else:
+        x_scaled = min_max_scaler.fit_transform(df.values)
+        for i in range(len(df.columns)):
+            d[df.columns[i]]=x_scaled[:,i]
+        print("~$> Dataframe has been normalized")
+        final_df = pd.DataFrame(data=d)        
     return final_df
 

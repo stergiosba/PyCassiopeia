@@ -16,10 +16,13 @@ for counter,column in enumerate(full_df.columns,start=1):
 if not os.path.exists(cycles_paths): os.makedirs(cycles_paths)
 plt.figure(0)
 correlations = full_df[full_df.columns].corr(method='pearson')
-heat_ax = sns.heatmap(correlations, cmap="YlGnBu", annot = True)
+
+mask = np.zeros_like(correlations, dtype=np.bool)
+mask[np.triu_indices_from(mask)] = True
+heat_ax = sns.heatmap(correlations, cmap='YlGnBu', annot=True, mask=mask, linewidths=0.5)
 
 figure = heat_ax.get_figure()    
-figure.savefig(os.path.join(cycles_paths,'cycles_corr.png'), dpi=400)
+figure.savefig(os.path.join(cycles_paths,'cycles_corr.png'), dpi=800)
 
 t = np.arange(0,len(full_df),1)
 t = list(t)
@@ -28,28 +31,28 @@ cycles = []
 for column in full_df.columns:
     cycles.append(list(full_df[column]))
 
-font = {'family':'serif',
-'color':'darkred',
+font = {#'family':'',
+'color':'black',
 'weight':'normal',
 'size': 14,
 }
 
-plt.style.use('ggplot')
+#plt.style.use('ggplot')
 for counter,cycle in enumerate(cycles,start=1):
     fig1 = plt.figure(counter)
     cycle_name='Cycle '+str(counter)
     plt.plot(t, cycle, color=(0/255,100/255,200/255), linestyle='-', label=cycle_name)
     plt.legend(loc='best')
-    plt.title(r'Pitch Angle $\beta$ Profile', fontdict=font)
+    #plt.title(r'Pitch Angle $\beta$ Profile', fontdict=font)
     plt.xlabel(r'$\mathbf{Time}$ (sec)',fontdict=font)
     plt.ylabel(r'$\mathbf{\beta}$ / $\mathbf{\beta_{max}}$',fontdict=font)
     plt.legend()
     plt.ylim(0,1)
     plt.xlim(0,len(t))
-    plt.grid(color='darkred')
-    plt.savefig(os.path.join(cycles_paths,cycle_name+'.png'))
+    plt.grid()
+    plt.savefig(os.path.join(cycles_paths,cycle_name+'.png'), dpi=800)
 
-#plt.show()
+plt.show()
 
 
 
