@@ -246,7 +246,6 @@ def trendWindow(_data_df,features_list,window_settings,model_path):
     counter = 0
     for cycle in _data_df:
         cycle_df = _data_df[cycle]
-        cycle_df = cycle_df.head(600)
         w_start = 0
         w_end = w_size
         Cycle_Final = pd.DataFrame(columns=features_list)
@@ -305,6 +304,7 @@ def trendWindow(_data_df,features_list,window_settings,model_path):
                     'N_OUT': out_win_revs,
                     'A_AVE': ave_win_acc
                 },ignore_index=True)
+                '''
                 font = {#'family':'',
                 'color':'black',
                 'weight':'normal',
@@ -340,20 +340,21 @@ def trendWindow(_data_df,features_list,window_settings,model_path):
                         plt.annotate('', xy=(w_start,0.9), xytext=(w_end-1,0.9),arrowprops={'arrowstyle': '<->','lw': 3}, va='center')
                     
                 ax=window_df.plot(color=(0/255,100/255,200/255))
+                '''
                 prev_label = label
                 w_start+=w_step
                 w_end+=w_step
                 pbar.update(n=1)
-                ins+=1
+                #ins+=1
             Cycle_Final = Cycle_Final.astype({'LABEL': int})
-            ax.grid()
+            #ax.grid()
             counter+=1
-            major_ticks = np.arange(0, 600, 50)
+            #major_ticks = np.arange(0, 600, 50)
             #minor_ticks = np.arange(0, 101, 5)
-            ax.set_xticks(major_ticks)
+            #ax.set_xticks(major_ticks)
             #plt.show()
             if not os.path.exists(model_path): os.makedirs(model_path)
-            plt.savefig(os.path.join(model_path,'trained_model_'+str(counter)+'.png'),dpi=800)
+            #plt.savefig(os.path.join(model_path,'trained_model_'+str(counter)+'.png'),dpi=800)
             Cycle_Final.to_csv(os.path.join(model_path,netco.INFERENCE+"_"+str(cycle)+".csv"),index=False)
         fit_df = fit_df.append(Cycle_Final,sort=False,ignore_index=True)
 

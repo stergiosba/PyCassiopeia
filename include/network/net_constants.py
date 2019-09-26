@@ -42,13 +42,13 @@ TREND_FEATURES = ['LABEL','N_MAX','N_MIN','N_AVE','N_IN','N_OUT','A_AVE']
 TREND_OUTPUTS = 6
 
 NN_EMOT = "NN_MOT"
-EMOT_FEATURES = ['TQ_EMOT','TQ_LOAD','V_SHIP','N_ERROR','SOC']
+EMOT_FEATURES = ['Dead Stop','Low Speed','Mid Speed','High Speed','Acceleration','Deceleration','TQ_LOAD','V_SHIP','N_ERROR','SOC']
 #EMOT_FEATURES = ['TQ_ICE','TQ_EMOT','TQ_LOAD','V_SHIP','N_ERROR','SOC']
 EMOT_OUTPUTS = 1
 
 NN_ENG = "NN_ENG"
-ENG_FEATURES = ['TQ_ICE','TQ_LOAD','V_SHIP','N_ERROR','SOC']
-#ENG_FEATURES = ['TQ_ICE','TQ_EMOT','TQ_LOAD','V_SHIP','N_ERROR','SOC']
+ENG_FEATURES = ['Dead Stop','Low Speed','Mid Speed','High Speed','Acceleration','Deceleration','TQ_LOAD','V_SHIP','N_ERROR','SOC']
+#ENG_FEATURES = ['TQ_LOAD','V_SHIP','N_ERROR','SOC']
 ENG_OUTPUTS = 1
 
 '''Common activation functions used for different Networks.

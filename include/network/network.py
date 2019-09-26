@@ -137,7 +137,7 @@ class Network():
         X_test = X_test.values.transpose()
         
         tf.compat.v1.set_random_seed(1)
-        tf.compat.v1.reset_default_graph()
+        #tf.compat.v1.reset_default_graph()
         seed = 3
         (n_x, m) = X_train.shape
         n_y = Y_train.shape[0]
@@ -289,7 +289,7 @@ class Network():
             name_W = "W"+str(layer_counter)
             name_b = "b"+str(layer_counter)
             with tf.compat.v1.variable_scope('Weights'):
-                self.layers[name_W] = tf.compat.v1.get_variable(name_W, [int(layer[0]), int(layer[1])], initializer = tf.contrib.layers.xavier_initializer(seed=2))
+                self.layers[name_W] = tf.compat.v1.get_variable(name_W, [int(layer[0]), int(layer[1])], initializer = tf.contrib.layers.xavier_initializer(seed=1))
             with tf.compat.v1.variable_scope('Biases'):
                 self.layers[name_b] = tf.compat.v1.get_variable(name_b, [int(layer[0]), 1], initializer = tf.zeros_initializer())
             

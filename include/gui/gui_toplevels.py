@@ -377,7 +377,7 @@ class creationToplevelControlGUI(tk.Toplevel):
         frame.activationValues = []
         for i in range(frame.layers):
             if i == 0:
-                frame.inValues.append(tk.StringVar(value=str(len(features)-1)))
+                frame.inValues.append(tk.StringVar(value=str(len(features))))
             else:
                 frame.inValues.append(tk.StringVar())
             frame.inValues[i].trace('w',limitSize)
@@ -689,20 +689,38 @@ class trainToplevelControlGUI(tk.Toplevel):
         window_settings = [int(self.model_trend.get().split('_')[1]),int(self.model_trend.get().split('_')[2])]
         #for cycle in range(netco.CYCLES_OUTPUTS):
         for cycle in range(2):
-            #cycle_data = pd.read_csv(os.path.join(self.model_path,netco.INFERENCE+'_'+str(cycle)+'.csv'))
-            #labels = cycle_data['LABEL']
-            #cycle_data=cycle_data.drop('LABEL',axis=1)
-            #cycle_data = self.trend_classifier.inference(cycle_data,window_settings)
-            #cycle_data['LABEL']=labels
+            cycle_data = pd.read_csv(os.path.join(self.model_path,netco.INFERENCE+'_'+str(cycle)+'.csv'))
+            labels = cycle_data['LABEL']
+            cycle_data=cycle_data.drop('LABEL',axis=1)
+            cycle_data = self.trend_classifier.inference(cycle_data,window_settings)
+            cycle_data['LABEL']=labels
 
-            data_ice = pd.read_csv(os.path.join(os.getcwd(),netco.SIMULATIONS,"simulation_"+str(cycle)+".csv"),usecols=netco.ENG_FEATURES)
+            data_ice = pd.read_csv(os.path.join(os.getcwd(),netco.SIMULATIONS,"simulation_"+str(cycle)+".csv"))#,usecols=netco.ENG_FEATURES)
+            data_ice=data_ice.drop(['TQ_EMOT'],axis=1)
             data_ice = data_ice.rename(columns={"TQ_ICE": "LABEL"})
-            #cycle_data = cycle_data.head(len(data_ice))
-            #data_ice['TREND']=cycle_data[netco.PREDICTION_LABEL]
+            data_ice = data_ice.tail(1592)
+            data_ice = data_ice.reset_index(drop=True)
+            data_ice = data_ice.head(1485)
+            data_ice['Dead Stop'] = (cycle_data[netco.PREDICTION_LABEL] == 0)*1.0
+            data_ice['Low Speed'] = (cycle_data[netco.PREDICTION_LABEL] == 1)*1.0
+            data_ice['Mid Speed'] = (cycle_data[netco.PREDICTION_LABEL] == 2)*1.0
+            data_ice['High Speed'] = (cycle_data[netco.PREDICTION_LABEL] == 3)*1.0
+            data_ice['Acceleration'] = (cycle_data[netco.PREDICTION_LABEL] == 4)*1.0
+            data_ice['Deceleration'] = (cycle_data[netco.PREDICTION_LABEL] == 5)*1.0
+            print(data_ice)
             
-            data_emot = pd.read_csv(os.path.join(os.getcwd(),netco.SIMULATIONS,"simulation_"+str(cycle)+".csv"),usecols=netco.EMOT_FEATURES)
+            data_emot = pd.read_csv(os.path.join(os.getcwd(),netco.SIMULATIONS,"simulation_"+str(cycle)+".csv"))#,usecols=netco.EMOT_FEATURES)
+            data_emot=data_emot.drop(['TQ_ICE'],axis=1)
             data_emot = data_emot.rename(columns={"TQ_EMOT": "LABEL"})
-            #data_emot['TREND']=cycle_data[netco.PREDICTION_LABEL]
+            data_emot = data_emot.tail(1592)
+            data_emot = data_emot.reset_index(drop=True)
+            data_emot = data_emot.head(1492)
+            data_emot['Dead Stop'] = (cycle_data[netco.PREDICTION_LABEL] == 0)*1.0
+            data_emot['Low Speed'] = (cycle_data[netco.PREDICTION_LABEL] == 1)*1.0
+            data_emot['Mid Speed'] = (cycle_data[netco.PREDICTION_LABEL] == 2)*1.0
+            data_emot['High Speed'] = (cycle_data[netco.PREDICTION_LABEL] == 3)*1.0
+            data_emot['Acceleration'] = (cycle_data[netco.PREDICTION_LABEL] == 4)*1.0
+            data_emot['Deceleration'] = (cycle_data[netco.PREDICTION_LABEL] == 5)*1.0
         
             self.networks_ice[cycle].train(data_ice,epochs,learning_rate,mini_batch,shuffle,test_size,netco.ENG_OUTPUTS)
             
