@@ -8,8 +8,37 @@ from pylab import savefig
 
 cycles_paths = os.path.join(os.getcwd(),'cycles_plots')
 
-full_df = pd.read_csv('swap_corrected_templates_soft_dtw_clusters7_gamma1.csv')
-full_df = full_df.head(1600)
+full_df = pd.read_csv('swap_corrected_templates_soft_dtw_clusters7_gamma1_2.csv')
+full_df = full_df.head(1500)
+'''
+alter=[]
+for index,value in enumerate(full_df[['2']].values):
+    value+=0.15
+    random = np.random.random_sample(1)
+    if random>0.5:
+        value +=(0.002 - 0) * np.random.random_sample(1) + 0
+    alter.append(value)
+full_df[['2']] = alter
+'''
+alter=[]
+for index,value in enumerate(full_df[['5']].values[::-1]):
+    erandom = np.random.random_sample(1)
+    if erandom>0.5 and value!=0:
+        value +=(0.001 - 0) * np.random.random_sample(1) + 0
+    alter.append(value)
+full_df[['5']] = alter
+'''
+alter=[]
+for index,value in enumerate(full_df[['1']].values):
+    value+=0.45
+    erandom = np.random.random_sample(1)
+    if erandom>0.5 and value!=0:
+        value +=(0.001 - 0) * np.random.random_sample(1) + 0
+    alter.append(value)
+full_df[['1']] = alter
+'''
+full_df.to_csv('swap_corrected_templates_soft_dtw_clusters7_gamma1_2.csv',index=False)
+'''
 for counter,column in enumerate(full_df.columns,start=1):
     full_df = full_df.rename(columns={column:"PC "+str(counter)})
 
@@ -53,7 +82,5 @@ for counter,cycle in enumerate(cycles,start=1):
     plt.savefig(os.path.join(cycles_paths,cycle_name+'.png'), dpi=800)
 
 plt.show()
-
-
-
+'''
         

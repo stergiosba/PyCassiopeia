@@ -15,7 +15,7 @@ from include.processes import trendProcess, cycleProcess
 def trend_windows_execute(window_size,window_step):
     measurements = ['RE_HMI_ECUA_020115']#"PR_air_scav","RE_gov_idx_meas"]
     features_list = netco.TREND_FEATURES
-    if window_size>=window_size:
+    if window_step<=window_size:
         model_path = os.path.join(os.getcwd(),netco.CLASSIFIERS,netco.TREND,"model_"+str(window_size)+"_"+str(window_step))
         if not os.path.exists(model_path):
             print("~$> Creating Model")
@@ -31,11 +31,11 @@ def trend_windows_execute(window_size,window_step):
             fit_df.plot()
             plt.show()
     else:
-        print("Cant Have smaller size than step")
+        print("The Window size cannot be smaller than the Window step. Correct your values.")
 
 def cycles_windows_execute(window_size,window_step):
     features_list = netco.CYCLES_FEATURES
-    if window_size>=window_size:
+    if window_step<=window_size:
         model_path = os.path.join(os.getcwd(),netco.CLASSIFIERS,netco.CYCLES,"model_"+str(window_size)+"_"+str(window_step))
         if not os.path.exists(model_path):
             print("~$> Creating Model")
@@ -50,4 +50,4 @@ def cycles_windows_execute(window_size,window_step):
             fit_df.plot()
             plt.show()
     else:
-        print("Cant Have smaller size than step")
+        print("The Window size cannot be smaller than the Window step. Correct your values.")

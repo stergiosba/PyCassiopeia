@@ -17,7 +17,7 @@ from include.utils import EPS
 import include.network.net_constants as netco
 from include.utils import normalizeDataFrame
 
-def onlinePrediction(edition,window_df):
+def onlineData(edition,window_df):
     window_df = window_df.apply(lambda x: x if x > EPS else 0)
     if edition == netco.CYCLES:
         fit_df = pd.DataFrame(columns=netco.CYCLES_FEATURES.copy().remove('LABEL'))

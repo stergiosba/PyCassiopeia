@@ -26,7 +26,7 @@ def trendProcess(data_path,model_path,features_list,measurements,window_settings
     full_df = cleanTrendData(data_path,measurements,indeces)
     full_df.loc[:,measurements[0]]
     '''
-    full_df = pd.read_csv(data_path+'/swap_corrected_templates_soft_dtw_clusters7_gamma1.csv')
+    full_df = pd.read_csv(data_path+'/swap_corrected_templates_soft_dtw_clusters7_gamma1_2.csv')
     full_df = full_df.head(1600)
     print("~$> All missing datapoints have been restored")
     print("~$> Loading the dataset from " +data_path)
@@ -39,8 +39,8 @@ def cycleProcess(data_path,model_path,features_list,window_settings):
     print("~$> Initializing Data Processing")
     print(50*"#")
     print("~$> Loading the dataset from " + data_path)
-    full_df = pd.read_csv(data_path+'/swap_corrected_templates_soft_dtw_clusters7_gamma1.csv')
-    full_df = full_df.head(1600)
+    full_df = pd.read_csv(data_path+'/swap_corrected_templates_soft_dtw_clusters7_gamma1_2.csv')
+    #full_df = full_df.drop(['5'],axis=1)
     print(full_df)
     print("~$> Loaded the dataset")
     cycleWindow(full_df, features_list, window_settings, model_path)

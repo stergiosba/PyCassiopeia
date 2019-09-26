@@ -7,6 +7,7 @@ from tkinter import ttk
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 import include.network.network as net
 import include.network.net_constants as netco
@@ -166,19 +167,19 @@ class trainToplevelClassificationGUI(tk.Toplevel):
         _label = tk.Label(self,text="Training Parameters",bg=self['bg'],fg = self.parent.parent.theme.bg)
         _label.grid(row=0,column=0,sticky="nsew")
 
-        networks = []
-        for file in os.listdir(self.root_path):
-            if os.path.isdir(os.path.join(self.root_path,file)):
-                networks.append(file)
-
         network_l = tk.Label(self,text="Network:",bg=self['bg'],fg = self.parent.parent.theme.bg)
         network_l.place(x=1,y=40)
 
         if self.parent.network_edition.get() == netco.CYCLES: features = netco.CYCLES_FEATURES
         if self.parent.network_edition.get() == netco.TREND: features = netco.TREND_FEATURES
         
+        networks = []
+        for file in os.listdir(self.root_path):
+            if os.path.isdir(os.path.join(self.root_path,file)):
+                networks.append(file)
+
         x_list_place = 151
-        self.network_version = ttk.Combobox(self,state="readonly")
+        self.network_version = ttk.Combobox(self,state="readonly",postcommand = self.callback_network)
         self.network_version['values'] = sorted(networks)      
         self.network_version.current(0)
         self.network_version.place(x=x_list_place,y=40)
@@ -194,7 +195,7 @@ class trainToplevelClassificationGUI(tk.Toplevel):
         epochs_l = tk.Label(self,text="Epochs:",bg=self['bg'],fg = self.parent.parent.theme.bg)
         epochs_l.place(x=1,y=60)
         epochs = ttk.Combobox(self,state="readonly")
-        epochs['values'] = (1,100,200,500,1000,2000)
+        epochs['values'] = (1,100,150,200,500,1000,2000)
         epochs.current(0)
         epochs.place(x=x_list_place,y=60)
 
@@ -254,6 +255,13 @@ class trainToplevelClassificationGUI(tk.Toplevel):
         if self.parent.network_edition.get() == netco.TREND:
             data = pd.read_csv(os.path.join(self.network.root_path,netco.TRAINING+".csv"),usecols=netco.TREND_FEATURES)
             self.network.train(data,epochs,learning_rate,mini_batch,shuffle,test_size,netco.TREND_OUTPUTS)
+            
+    def callback_network(self):
+        networks = []
+        for file in os.listdir(self.root_path):
+            if os.path.isdir(os.path.join(self.root_path,file)):
+                networks.append(file)
+        self.network_version['values'] = sorted(networks)
 
 class fancyFrame(tk.Frame):
     def __init__(self,parent,inValues,outValues,activationValues,layers):
@@ -492,14 +500,13 @@ class trainToplevelControlGUI(tk.Toplevel):
         self.controllers_root_path = os.path.join(os.getcwd(),netco.CONTROLLERS)
         controller_l = tk.Label(self,text="Controller:",bg=self['bg'],fg = self.parent.parent.theme.bg)
         controller_l.place(x=1,y=20)
-        self.controller = ttk.Combobox(self,state="readonly")#,postcommand = self.callback_control)
+        self.controller = ttk.Combobox(self,state="readonly",postcommand = self.callback_control)
         if not os.path.exists(self.controllers_root_path):
             self.controller['values'] = list([""])
         else:
             self.controller['values'] = list(os.listdir(self.controllers_root_path))
         self.controller.current(0)
         self.controller.place(x=x_list_place_ice,y=20)
-        self.controller_path = os.path.join(self.controllers_root_path,self.controller.get())
 
         self.trend_root_path = os.path.join(os.getcwd(),netco.CLASSIFIERS,netco.TREND)
         model_trend_l = tk.Label(self,text="Trend Model:",bg=self['bg'],fg = self.parent.parent.theme.bg)
@@ -512,8 +519,24 @@ class trainToplevelControlGUI(tk.Toplevel):
         self.model_trend.current(0)
         self.model_trend.place(x=x_list_place_ice,y=40)
 
+        self.controller_path = os.path.join(self.controllers_root_path,self.controller.get())
+        self.model_path = os.path.join(self.trend_root_path,self.model_trend.get())
+
+        networks = []
+        for file in os.listdir(self.model_path):
+            if os.path.isdir(os.path.join(self.model_path,file)):
+                networks.append(file)
+        trend_network_l = tk.Label(self,text="Trend Network:",bg=self['bg'],fg = self.parent.parent.theme.bg)
+        trend_network_l.place(x=1,y=60)
+        self.trend_network = ttk.Combobox(self,state="readonly")
+        self.trend_network['values'] = sorted(networks)
+        self.trend_network.current(0)
+        self.trend_network.place(x=x_list_place_ice,y=60)
+
         self.networks_ice = []
         self.networks_emot = []
+        self.trend_classifier = net.NNClassifier(netco.TREND,netco.LOAD,self.trend_network.get(),self.model_path,netco.TREND_FEATURES)
+        self.trend_classifier_path = os.path.join(self.model_path,self.trend_network.get())
         for cycle in range(netco.CYCLES_OUTPUTS):
             cycle_path = os.path.join(self.controller_path,netco.CYCLE+"_"+str(cycle))
             network_ice = net.NNRegressor(netco.ENGINE,netco.LOAD,netco.NN_ENG+'_1',cycle_path,netco.ENG_FEATURES)
@@ -524,40 +547,65 @@ class trainToplevelControlGUI(tk.Toplevel):
             network_emot.layers_import(network_ice.version_path+"/network_structure.json")
             self.networks_emot.append(network_emot)
 
+        def callback():
+            self.controller_path = os.path.join(self.controllers_root_path,self.controller.get())
+            self.model_path = os.path.join(self.trend_root_path,self.model_trend.get())
+
+            networks = []
+            for file in os.listdir(self.model_path):
+                if os.path.isdir(os.path.join(self.model_path,file)):
+                    networks.append(file)
+            self.trend_network['values'] = sorted(networks)
+            self.trend_classifier_path = os.path.join(self.model_path,self.trend_network.get())
+            self.trend_classifier = net.NNClassifier(netco.TREND,netco.LOAD,self.trend_network.get(),self.model_path,netco.TREND_FEATURES)
+            for cycle in range(netco.CYCLES_OUTPUTS):
+                cycle_path = os.path.join(self.controller_path,netco.CYCLE+"_"+str(cycle))
+                network_ice = net.NNRegressor(netco.ENGINE,netco.LOAD,netco.NN_ENG+'_1',cycle_path,netco.ENG_FEATURES)
+                network_ice.layers_import(network_ice.version_path+"/network_structure.json")
+                self.networks_ice.append(network_ice)
+
+                network_emot = net.NNRegressor(netco.MOTOR,netco.LOAD,netco.NN_EMOT+'_1',cycle_path,netco.EMOT_FEATURES)
+                network_emot.layers_import(network_ice.version_path+"/network_structure.json")
+                self.networks_emot.append(network_emot)
+
+        self.controller.bind("<<ComboboxSelected>>", lambda _ : callback())
+        self.model_trend.bind("<<ComboboxSelected>>", lambda _ : callback())
+        self.trend_network.bind("<<ComboboxSelected>>", lambda _ : callback())
+
         epochs_l = tk.Label(self,text="Epochs:",bg=self['bg'],fg = self.parent.parent.theme.bg)
-        epochs_l.place(x=1,y=60)
+        epochs_l.place(x=1,y=80)
         epochs = ttk.Combobox(self,state="readonly")
         epochs['values'] = (1,5,10,20,50,80,100,200,500,1000,2000)
         epochs.current(0)
-        epochs.place(x=x_list_place_ice,y=60)
+        epochs.place(x=x_list_place_ice,y=80)
 
         learning_rate_l = tk.Label(self,text="Learning Rate:",bg=self['bg'],fg = self.parent.parent.theme.bg)
-        learning_rate_l.place(x=1,y=80)
+        learning_rate_l.place(x=1,y=100)
         learning_rate = ttk.Combobox(self,state="readonly")
         learning_rate['values'] = (0.0001,0.001,0.01,0.1,1,10)
         learning_rate.current(0)
-        learning_rate.place(x=x_list_place_ice,y=80)    
+        learning_rate.place(x=x_list_place_ice,y=100)    
 
         mini_batch_l = tk.Label(self,text="Minibatch Size:",bg=self['bg'],fg = self.parent.parent.theme.bg)
-        mini_batch_l.place(x=1,y=100)
+        mini_batch_l.place(x=1,y=120)
         mini_batch = ttk.Combobox(self,state="readonly")
         mini_batch['values'] = (8,16,32,64,128,256)
         mini_batch.current(2)
-        mini_batch.place(x=x_list_place_ice,y=100)
+        mini_batch.place(x=x_list_place_ice,y=120)
 
         shuffle_l = tk.Label(self,text="Shuffle Data:",bg=self['bg'],fg = self.parent.parent.theme.bg)
-        shuffle_l.place(x=1,y=120)
+        shuffle_l.place(x=1,y=140)
         shuffle = ttk.Combobox(self,state="readonly")
         shuffle['values'] = (True,False)
         shuffle.current(0)
-        shuffle.place(x=x_list_place_ice,y=120)
+        shuffle.place(x=x_list_place_ice,y=140)
 
         test_size_l = tk.Label(self,text="Train/Test Split %:",bg=self['bg'],fg = self.parent.parent.theme.bg)
-        test_size_l.place(x=1,y=140)
+        test_size_l.place(x=1,y=160)
         test_size = ttk.Combobox(self,state="readonly")
         test_size['values'] = (0.3,0.25,0.2,0.15,0.1)
         test_size.current(0)
-        test_size.place(x=x_list_place_ice,y=140)
+        test_size.place(x=x_list_place_ice,y=160)
         
         train_button = tk.Button(self,text="Train",command=lambda:self.training(int(epochs.get()),float(learning_rate.get()),int(mini_batch.get()),shuffle.get(),float(test_size.get())))
         train_button['bg'] = self.parent.parent.theme.bg
@@ -638,21 +686,44 @@ class trainToplevelControlGUI(tk.Toplevel):
         self.configure(bg=self.parent.parent.theme.fg)
     
     def training(self,epochs,learning_rate,mini_batch,shuffle,test_size):
-        for cycle in range(netco.CYCLES_OUTPUTS):
+        window_settings = [int(self.model_trend.get().split('_')[1]),int(self.model_trend.get().split('_')[2])]
+        #for cycle in range(netco.CYCLES_OUTPUTS):
+        for cycle in range(2):
+            #cycle_data = pd.read_csv(os.path.join(self.model_path,netco.INFERENCE+'_'+str(cycle)+'.csv'))
+            #labels = cycle_data['LABEL']
+            #cycle_data=cycle_data.drop('LABEL',axis=1)
+            #cycle_data = self.trend_classifier.inference(cycle_data,window_settings)
+            #cycle_data['LABEL']=labels
+
             data_ice = pd.read_csv(os.path.join(os.getcwd(),netco.SIMULATIONS,"simulation_"+str(cycle)+".csv"),usecols=netco.ENG_FEATURES)
             data_ice = data_ice.rename(columns={"TQ_ICE": "LABEL"})
+            #cycle_data = cycle_data.head(len(data_ice))
+            #data_ice['TREND']=cycle_data[netco.PREDICTION_LABEL]
+            
             data_emot = pd.read_csv(os.path.join(os.getcwd(),netco.SIMULATIONS,"simulation_"+str(cycle)+".csv"),usecols=netco.EMOT_FEATURES)
             data_emot = data_emot.rename(columns={"TQ_EMOT": "LABEL"})
+            #data_emot['TREND']=cycle_data[netco.PREDICTION_LABEL]
         
             self.networks_ice[cycle].train(data_ice,epochs,learning_rate,mini_batch,shuffle,test_size,netco.ENG_OUTPUTS)
+            
             self.networks_emot[cycle].train(data_emot,epochs,learning_rate,mini_batch,shuffle,test_size,netco.EMOT_OUTPUTS)
+            
         
+
+
     def callback_trend(self):
         if os.path.exists(self.trend_root_path):
             list_values = list(os.listdir(self.trend_root_path))
         else:
             list_values = ['']
         self.model_trend['values'] = list_values
+    
+    def callback_control(self):
+        if os.path.exists(self.controllers_root_path):
+            list_values = list(os.listdir(self.controllers_root_path))
+        else:
+            list_values = []
+        self.controller['values'] = list_values
 
 class inferenceToplevelControlGUI(tk.Toplevel):
     def __init__(self,parent):
@@ -661,7 +732,7 @@ class inferenceToplevelControlGUI(tk.Toplevel):
         self.settingsGUI("Inference Setup")
         self.root_path = os.getcwd()+'/models/'+self.parent.network_edition.get()+'/'+self.parent.model.get()
 
-        _label = tk.Label(self,text="Inference Parameters",bg=self['bg'],fg = self.parent.parent.theme.bg)
+        _label = tk.Label(self,text="Inference Parameters for "+self.parent.model.get(),bg=self['bg'],fg = self.parent.parent.theme.bg)
         _label.grid(row=0,column=0,sticky="nsew")
 
         networks = []
@@ -672,6 +743,8 @@ class inferenceToplevelControlGUI(tk.Toplevel):
         if self.parent.network_edition.get() == netco.CYCLES: self.features = netco.CYCLES_FEATURES
         if self.parent.network_edition.get() == netco.TREND: self.features = netco.TREND_FEATURES
 
+        network__l = tk.Label(self,text="Network:",bg=self['bg'],fg = self.parent.parent.theme.bg)
+        network__l.place(x=1,y=40)
         self.network_version = ttk.Combobox(self,state="readonly")
         self.network_version['values'] = sorted(networks)      
         self.network_version.current(0)
@@ -682,15 +755,24 @@ class inferenceToplevelControlGUI(tk.Toplevel):
             samples.append(file)
         samples = sorted(samples)
 
+        sample_l = tk.Label(self,text="Sample:",bg=self['bg'],fg = self.parent.parent.theme.bg)
+        sample_l.place(x=1,y=60)
         sample_file = ttk.Combobox(self,state="readonly")
         sample_file['values'] = samples
         sample_file.current(0)
         sample_file.place(x=111,y=60)
+        '''
+        times_l = tk.Label(self,text="Timestamps:",bg=self['bg'],fg = self.parent.parent.theme.bg)
+        times_l.place(x=1,y=80)
+        times = tk.Entry(self)
+        times.place(x=111,y=80)
         
+        load_inference_button = tk.Button(self,text="Inference",command=lambda:self.load_trained_network(sample_file.get(),int(times.get())))
+        '''
         load_inference_button = tk.Button(self,text="Inference",command=lambda:self.load_trained_network(sample_file.get()))
         load_inference_button['bg'] = self.parent.parent.theme.bg
         load_inference_button['fg'] = self.parent.parent.theme.fg
-        load_inference_button.place(x=111,y=80)
+        load_inference_button.place(x=111,y=100)
 
         self.bind('<Return>', lambda event:self.load_trained_network(sample_file.get()))
         

@@ -23,7 +23,7 @@ import scipy.io
 import include.network.net_constants as netco
 import include.network.net_setup as nets
 from include.utils import normalizeDataFrame
-from include.network.online import onlinePrediction
+from include.network.online import onlineData
 #tf.reset_default_graph()   # To clear the defined variables and operations of the previous cell
 # create grap
 
@@ -91,6 +91,7 @@ class Network():
         '''Network train function. \n
         |-> Arguments(data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs)
         '''
+        self.function = netco.TRAINING
         # On a new training process of the same network we check for new build/train up to 10
         costs_flag = False
         self.build_control()
@@ -100,7 +101,7 @@ class Network():
         graph = tf.Graph()
         self.graph = graph
         begin = time.time()
-        X_data = normalizeDataFrame(data)
+        X_data = self.normalize(data)
         if self.edition == netco.TREND or self.edition == netco.CYCLES:
             X_data = X_data.astype({'LABEL': int})
 
@@ -134,10 +135,6 @@ class Network():
         X_test = X_test.drop(["LABEL"],axis=1)
         X_train = X_train.values.transpose()
         X_test = X_test.values.transpose()
-        
-        Y_fake = X_data[['LABEL']]
-        X_fake = X_data.drop(["LABEL"],axis=1)
-        X_fake = X_fake.values.transpose()
         
         tf.compat.v1.set_random_seed(1)
         tf.compat.v1.reset_default_graph()
@@ -261,14 +258,19 @@ class Network():
             print(self.cli_name+" Train Accuracy:", accuracy.eval({X: X_train, Y: Y_train}))
             print(self.cli_name+" Test Accuracy:", accuracy.eval({X: X_test, Y: Y_test}))
             saver.save(sess, self.version_path+'/model.ckpt')
-            '''
-            tt=pd.DataFrame(sess.run(output_function(final),feed_dict={X: X_fake}))
-            ax = Y_fake.plot()
-            tt.plot(ax=ax)
+
+            X_ordered= X_data.drop(["LABEL"],axis=1)
+            X_ordered = X_ordered.values.transpose()
+            ordered_predictions = sess.run(output_function(final),feed_dict={X: X_ordered}).T
+
+            show_df = pd.DataFrame()
+            show_df['TRUTH'] = X_data['LABEL']
+            show_df['PREDICTION'] = ordered_predictions
+            ax = show_df.plot()
             plt.savefig(self.build_path+'/trained_model.pdf')
-            '''
+            
             self.network_training_summary_report()
-            #plt.show()
+            plt.show()
             
         return self.predictions
         
@@ -287,7 +289,7 @@ class Network():
             name_W = "W"+str(layer_counter)
             name_b = "b"+str(layer_counter)
             with tf.compat.v1.variable_scope('Weights'):
-                self.layers[name_W] = tf.compat.v1.get_variable(name_W, [int(layer[0]), int(layer[1])], initializer = tf.contrib.layers.xavier_initializer(seed=1))
+                self.layers[name_W] = tf.compat.v1.get_variable(name_W, [int(layer[0]), int(layer[1])], initializer = tf.contrib.layers.xavier_initializer(seed=2))
             with tf.compat.v1.variable_scope('Biases'):
                 self.layers[name_b] = tf.compat.v1.get_variable(name_b, [int(layer[0]), 1], initializer = tf.zeros_initializer())
             
@@ -320,45 +322,27 @@ class Network():
         # [Return last layer]
         return Z[-1]
 
-    def export_predictions(self,start,end):
-        '''[DEPRECATED]'''
-        full_df = pd.read_csv(os.getcwd()+"/templates.csv", header=None, engine="python").T
-        self.test_df['PRED_LABEL'] = self.predictions_test
-        show_df = self.test_df[start:end]
-        show_df = show_df.reset_index()
-        fig = plt.figure(3)
-        plt.title('test')
-        plt.ylim(0, 1)
-        plot_feat = 'N_MAX'
-        ax = show_df[plot_feat].plot()
-        for i in range(len(show_df)):
-            y = show_df[plot_feat][i]
-            label = str(show_df['LABEL'][i])+"/"+str(show_df['PRED_LABEL'][i])
-            if (show_df['LABEL'][i] == show_df['PRED_LABEL'][i]):
-                ax.text(i, y, label,bbox=dict(facecolor='green', alpha=0.5))
-            else:
-                ax.text(i, y, label,bbox=dict(facecolor='red', alpha=0.5))
-
-        self.test_df['PRED_LABEL'] = self.predictions_test
-        show1_df = self.test_df[start:end]
-        show1_df = show1_df.reset_index()
-        fig1 = plt.figure(4)
-        plt.title('train')
-        plt.ylim(0, 1)
-        plot_feat = 'N_MAX'
-        ax = show1_df[plot_feat].plot()
-        for i in range(len(show1_df)):
-            if (show1_df['LABEL'][i] == show1_df['PRED_LABEL'][i]):
-                ax.text(i, 0.8, show1_df['LABEL'][i],bbox=dict(facecolor='green', alpha=0.5))
-                ax.text(i, 0.6, show1_df['PRED_LABEL'][i],bbox=dict(facecolor='green', alpha=0.5))
-            else:
-                ax.text(i, 0.8, show1_df['LABEL'][i],bbox=dict(facecolor='red', alpha=0.5))
-                ax.text(i, 0.6, show1_df['PRED_LABEL'][i],bbox=dict(facecolor='red', alpha=0.5))
-        plt.show()
+    def normalize(self,data):
+        '''Normalize data and save normalizers for later inference'''
+        normalizers_file = "data_normalizers.json"
+        save_path = os.path.join(self.version_path,normalizers_file)
+        if self.function == netco.TRAINING:
+            final_df, normalizers = normalizeDataFrame(data)
+            normalizers.to_json(path_or_buf=save_path,orient='columns')
+        elif self.function == netco.INFERENCE:
+            normalizers = pd.read_json(save_path)
+            final_df = pd.DataFrame(columns=data.columns)
+            for column in data.columns:
+                if (column=='D_MAX' or column=='D_AVE'):
+                    final_df[column] = data[column].apply(lambda x: 1-(x-normalizers.loc[column].min())/(normalizers.loc[column].max()-normalizers.loc[column].min()))
+                else:
+                    final_df[column] = data[column].apply(lambda x: (x-normalizers.loc[column].min())/(normalizers.loc[column].max()-normalizers.loc[column].min()))
+        return final_df
 
     def network_training_summary_report(self):
+        '''Save a training summary report for the trained network'''
         settings_file = self.name+".training_summary.txt"
-        layers_matlab_file = self.name+".layers.m"
+        layers_matlab_file = self.name+".layers.mat"
         exit_path = os.path.join(self.build_path,settings_file)
         layers_path = os.path.join(self.build_path,layers_matlab_file)
         lines = [
@@ -451,42 +435,64 @@ class NNClassifier(Network):
         Network.__init__(self,edition,flag,base_name,root_path,features)
 
     def inference(self,data,window_settings):
-        full_df = pd.read_csv(os.path.join(self.root_path,'samples',data))
-        test_df = full_df[['E_REV']]
+        '''def inference(self,data,window_settings):
+        
+        '''
+        self.function = netco.INFERENCE
+        #full_df = pd.read_csv(os.path.join(self.root_path,'samples',data))
+        full_df = data
         self.layers_import(self.version_path+"/network_structure.json")
         self.graph = tf.Graph()
-        
         with self.graph.as_default():
             saver = tf.compat.v1.train.import_meta_graph(self.version_path+'/model.ckpt.meta')
+        self.layers = {}
+        for op in self.graph.get_operations():
+            for layer_counter,layer in enumerate(self.structure,start=0):
+                pattern_W = '^Weights/W'+str(layer_counter)+'$'
+                pattern_b = '^Biases/b'+str(layer_counter)+'$'
+                if re.search(pattern_W, str(op.name)) is not None:
+                    self.layers["W"+str(layer_counter)] = tf.cast(self.graph.get_tensor_by_name(str(op.name)+str(':0')), tf.float64,name="W"+str(layer_counter))
+
+                if re.search(pattern_b, str(op.name)) is not None:
+                    self.layers["b"+str(layer_counter)] = tf.cast(self.graph.get_tensor_by_name(str(op.name)+str(':0')), tf.float64,name="b"+str(layer_counter))
         targets=[]
         # Start reading datas
         low_indx = 0
         high_indx = 0
-        for index, row in test_df.iterrows():
-            if index<int(window_settings[0]):
-                targets.append(row[0])
-            else:
-                low_indx+=1
-                print(50*'-')
-                del targets[0]
-                targets.append(row[0])
-                window_df = pd.Series(targets)
-                X_data = onlinePrediction(self.edition,window_df)
-                n_X_data = normalizeDataFrame(X_data).T
-                with tf.compat.v1.Session(graph=self.graph) as sess:
-                    saver.restore(sess, self.version_path+"/model.ckpt")
-                    final = self.graph.get_tensor_by_name("Final:0")
-                    X = self.graph.get_tensor_by_name("X:0")
-                    self.predictions = sess.run(tf.argmax(final),feed_dict={X: n_X_data})
-                #required_df = full_df.iloc[high]
-                #required_df['LABEL'] = go['LABEL'][0]
-                #print(required_df)
-                print(low_indx,high_indx)
-                print(self.predictions)
-            high_indx+=1
-        
-
-
+        X = tf.cast(self.graph.get_tensor_by_name("X:0"), tf.float64)
+        final = self.forward_propagation(X)
+        predictions = []
+        with tf.compat.v1.Session(graph=self.graph) as sess:
+            sess.run(tf.global_variables_initializer())
+            saver.restore(sess, self.version_path+"/model.ckpt")
+            n_X_data = self.normalize(full_df)
+            X_inf = n_X_data.values.transpose()
+            predictions = sess.run(tf.argmax(final),feed_dict={X: X_inf})
+            '''
+            for index, row in full_df[['E_REV']].iterrows():
+                if index<int(window_settings[0]):
+                    targets.append(row[0])
+                    predictions.append(-1)
+                else:
+                    low_indx+=1
+                    #print(50*'-')
+                    del targets[0]
+                    targets.append(row[0])
+                    window_df = pd.Series(targets)
+                    X_data = onlineData(self.edition,window_df)
+                    n_X_data = self.normalize(X_data)
+                    X_inf = n_X_data.values.transpose()
+                    prediction = sess.run(tf.argmax(final),feed_dict={X: X_inf})
+                    predictions.append(prediction[0])
+                    print(low_indx,'-',high_indx)
+                    #required_df = full_df.iloc[high]
+                    #required_df['LABEL'] = go['LABEL'][0]
+                    #print(required_df)
+                high_indx+=1
+            '''
+        full_df[netco.PREDICTION_LABEL] = predictions
+        return full_df
+       
 class NNRegressor(Network):
     def __init__(self,edition,flag,base_name,root_path,features):
         Network.__init__(self,edition,flag,base_name,root_path,features)

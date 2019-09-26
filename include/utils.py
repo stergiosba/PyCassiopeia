@@ -10,7 +10,7 @@ from sklearn import preprocessing
 import numpy as np
 import math
 
-EPS = 1.0e-5
+EPS = 1.0e-4
 MAX_NULL = 1.0e4
 ACC_THRESHOLD = 0.002
 
@@ -51,24 +51,31 @@ def cleanTrendData(data_path,measurements,indeces):
  
 def normalizeDataFrame(df):
     '''
-    Normalizing Dataframe Columns except for LABEL column
+    Efficient Normalizing Dataframe Columns except for LABEL column if it exists.
+
+    -Normalization at x2 speed compared to df[df.columns] = preprocessing.MinMaxScaler().fit_transform(df[df.columns])
     '''
-    print("~$> Normalizing Dataframe")
     d = {}
-    min_max_scaler = preprocessing.MinMaxScaler()
+    scaler = preprocessing.MinMaxScaler()
     if 'LABEL' in df.columns :
         saved_labels = df[['LABEL']]
-        x_scaled = min_max_scaler.fit_transform(df.values)
+        df = df.drop('LABEL',axis=1)
+        x_scaled = scaler.fit_transform(df.values)
         for i in range(len(df.columns)):
             d[df.columns[i]]=x_scaled[:,i]
-        print("~$> Dataframe has been normalized")
         final_df = pd.DataFrame(data=d)
         final_df['LABEL'] = saved_labels
     else:
-        x_scaled = min_max_scaler.fit_transform(df.values)
+        x_scaled = scaler.fit_transform(df.values)
         for i in range(len(df.columns)):
             d[df.columns[i]]=x_scaled[:,i]
-        print("~$> Dataframe has been normalized")
-        final_df = pd.DataFrame(data=d)        
-    return final_df
+        final_df = pd.DataFrame(data=d)
+    if 'D_AVE' in df.columns and 'D_MAX' in df.columns:
+        final_df['D_AVE'] = final_df['D_AVE'].apply(lambda x: 1-x)
+        final_df['D_MAX'] = final_df['D_MAX'].apply(lambda x: 1-x)
+
+    normalizers = pd.DataFrame([scaler.data_min_,scaler.data_max_],columns=df.columns)
+    #normalizers = normalizers.rename(index={0: "MIN", 1: "MAX", 2: "RANGE"})
+    normalizers = normalizers.T
+    return final_df,normalizers
 

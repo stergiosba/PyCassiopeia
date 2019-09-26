@@ -111,9 +111,7 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
                 'P_N_030': round(counter_P_N_030/len(window_df),4),
                 'P_N_3050': round(counter_P_N_3050/len(window_df),4),
                 'P_N_5070': round(counter_P_N_5070/len(window_df),4),
-                'P_N_70100':round(counter_P_N_70100/len(window_df),4),
-                'W_START': w_start,
-                'W_END': w_end
+                'P_N_70100':round(counter_P_N_70100/len(window_df),4)
                 #'P_D_12':1,
                 #'P_D_23':1
                 },ignore_index=True)
@@ -122,6 +120,8 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
                 w_end+=w_step
                 pbar.update(n=1)
             Cycle_Final = Cycle_Final.astype({'LABEL': int})
+            if not os.path.exists(model_path): os.makedirs(model_path)
+            Cycle_Final.to_csv(os.path.join(model_path,netco.INFERENCE+"_"+str(cycle)+".csv"),index=False)
         fit_df = fit_df.append(Cycle_Final,sort=False,ignore_index=True)
 
     print(50*"-")    
@@ -243,34 +243,37 @@ def trendWindow(_data_df,features_list,window_settings,model_path):
     w_count = windowUnits(len(_data_df)-1,w_size-1,w_step)
 
     print("~$> Total Windows Progression")
+    counter = 0
     for cycle in _data_df:
         cycle_df = _data_df[cycle]
+        cycle_df = cycle_df.head(600)
         w_start = 0
         w_end = w_size
         Cycle_Final = pd.DataFrame(columns=features_list)
+        ins = 0
         with tqdm(total = w_count,desc = "~$> ",unit="win") as pbar:
             for window in range(cycle_df.index.min(),cycle_df.index.max(),w_step):
                 window_df = cycle_df[w_start:w_end]
                 if len(window_df)!=w_size:
                     continue
-                window_df = window_df.reset_index(drop=True)
+                #window_df = window_df.reset_index(drop=True)
                 # Checking for values below EPS and making them zero.
+                
                 window_df = window_df.apply(lambda x: x if x > EPS else 0)
                 # Initializing the counters
                 acc_list = []
                 for time_step in window_df.index:
-                    if time_step==0:
+                    if time_step==0+w_start:
                         pass
                     else:
                         acc = window_df[time_step]-window_df[time_step-1]
                         acc_list.append(acc)
-                ave_win_acc = round(stats.mean(acc_list),4)
+                ave_win_acc = round(stats.mean(acc_list),6)
                 max_win_revs = round(window_df.max(),4)
                 min_win_revs = round(window_df.min(),4)
                 ave_win_revs = round(window_df.mean(),4)
                 in_win_revs = round(window_df[window_df.index.min()],4)
                 out_win_revs = round(window_df[window_df.index.max()],4)
-
                 if w_start == 0:                    
                     if (ave_win_revs>EPS and ave_win_revs<0.3):
                         label = 1 #Low Speed Steady
@@ -280,7 +283,7 @@ def trendWindow(_data_df,features_list,window_settings,model_path):
                         label = 3 #High Speed Steady
                     prev_label = label
                 else:
-                    if (ave_win_revs<EPS and max_win_revs==0 and min_win_revs==0):
+                    if (ave_win_revs<EPS and max_win_revs<EPS and min_win_revs<EPS):
                         label = 0 #Dead Stop
                     elif (ave_win_revs>EPS and ave_win_revs<0.3 and ave_win_acc<ACC_THRESHOLD and ave_win_acc>-ACC_THRESHOLD):
                         label = 1 #Low Speed Steady
@@ -300,17 +303,58 @@ def trendWindow(_data_df,features_list,window_settings,model_path):
                     'N_AVE': ave_win_revs,
                     'N_IN' : in_win_revs,
                     'N_OUT': out_win_revs,
-                    'A_AVE': ave_win_acc,
-                    'W_START': w_start,
-                    'W_END': w_end
+                    'A_AVE': ave_win_acc
                 },ignore_index=True)
+                font = {#'family':'',
+                'color':'black',
+                'weight':'normal',
+                'size': 14
+                }
+                if ins<=2:
+                    plt.xlabel(r'$\mathbf{Time}$ (sec)',fontdict=font)
+                    plt.ylabel(r'$\mathbf{\beta}$ / $\mathbf{\beta_{max}}$',fontdict=font)
+                    plt.ylim(0,1)
+
+                    #plt.plot(w_start,window_df[window_df.index.min()],'m>')
+                    #plt.plot(w_end-1,window_df[window_df.index.max()],'ro')
+                    #plt.plot(window_df.idxmax(),window_df.max(),'y<')
+                    #plt.plot(window_df.idxmin(),window_df.min(),'gx')
+                    if ins==0:
+                        plt.text(w_start+10,0.75,'Window '+str(ins+1),bbox=dict(facecolor='red', alpha=0.8))
+                        plt.axvline(x=w_start,ymin=0,ymax=0.75,color='red',linestyle='-',linewidth=2)
+                        plt.axvline(x=w_end-1,ymin=0,ymax=0.75,color='red',linestyle='-',linewidth=2)
+                        plt.annotate('', xy=(w_start,0.7), xytext=(w_end-1,0.7),arrowprops={'arrowstyle': '<->','lw': 3}, va='center')
+                        plt.annotate('', xy=(w_end,0.6), xytext=(w_end+w_step-1,0.6),arrowprops={'arrowstyle': '<->','lw': 3,'color':'orange'}, va='center')
+                        plt.text(w_end+25,0.65,'Step '+str(ins+1),bbox=dict(facecolor='orange', alpha=0.8))
+                    elif ins==1:
+                        plt.text(w_start+10,0.85,'Window '+str(ins+1),bbox=dict(facecolor='blue', alpha=0.8))
+                        plt.axvline(x=w_start,ymin=0,ymax=0.85,color='blue',linestyle='-',linewidth=2)
+                        plt.axvline(x=w_end-1,ymin=0,ymax=0.85,color='blue',linestyle='-',linewidth=2)
+                        plt.annotate('', xy=(w_start,0.8), xytext=(w_end-1,0.8),arrowprops={'arrowstyle': '<->','lw': 3}, va='center')
+                        plt.annotate('', xy=(w_end,0.6), xytext=(w_end+w_step-1,0.6),arrowprops={'arrowstyle': '<->','lw': 3,'color':'orange'}, va='center')
+                        plt.text(w_end+25,0.65,'Step '+str(ins+1),bbox=dict(facecolor='orange', alpha=0.8))
+                    else:
+                        plt.text(w_start+10,0.95,'Window '+str(ins+1),bbox=dict(facecolor='green', alpha=0.8))
+                        plt.axvline(x=w_start,ymin=0,ymax=0.95,color='green',linestyle='-',linewidth=2)
+                        plt.axvline(x=w_end-1,ymin=0,ymax=0.95,color='green',linestyle='-',linewidth=2)
+                        plt.annotate('', xy=(w_start,0.9), xytext=(w_end-1,0.9),arrowprops={'arrowstyle': '<->','lw': 3}, va='center')
+                    
+                ax=window_df.plot(color=(0/255,100/255,200/255))
                 prev_label = label
                 w_start+=w_step
                 w_end+=w_step
                 pbar.update(n=1)
+                ins+=1
             Cycle_Final = Cycle_Final.astype({'LABEL': int})
+            ax.grid()
+            counter+=1
+            major_ticks = np.arange(0, 600, 50)
+            #minor_ticks = np.arange(0, 101, 5)
+            ax.set_xticks(major_ticks)
+            #plt.show()
             if not os.path.exists(model_path): os.makedirs(model_path)
-            Cycle_Final.to_csv(os.path.join(model_path,netco.TRAINING+"_"+str(cycle)+".csv"),index=False)
+            plt.savefig(os.path.join(model_path,'trained_model_'+str(counter)+'.png'),dpi=800)
+            Cycle_Final.to_csv(os.path.join(model_path,netco.INFERENCE+"_"+str(cycle)+".csv"),index=False)
         fit_df = fit_df.append(Cycle_Final,sort=False,ignore_index=True)
 
     print(50*"-")    
