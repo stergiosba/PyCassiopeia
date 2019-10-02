@@ -3,25 +3,25 @@ import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-seed_offset = 0
+seed_offset = 4312512
 samples_path = "samples/"
 #full_df = pd.read_pickle('templates_Euclidean barycenter_clusters7.pkl').T
 #full_df = pd.read_csv('swap_corrected_templates_soft_dtw_clusters7_gamma1.csv')
 full_df = pd.read_csv('swap_corrected_templates_soft_dtw_clusters7_gamma1_2.csv')
 full_df = full_df.head(1500)
 
-samples = 1
+samples = 10
 
 if not os.path.exists(samples_path):
     os.makedirs(samples_path)
 for sample in range(samples):
     np.random.seed(seed_offset+sample)
-    sections = np.random.randint(20,25, size=1, dtype=int)[0]
-    #random_sections = np.random.randint(len(full_df.columns), size=sections, dtype=int)
-    random_sections = np.random.randint(2, size=sections, dtype=int)
+    sections = np.random.randint(10,15, size=1, dtype=int)[0]
+    random_sections = np.random.randint(len(full_df.columns), size=sections, dtype=int)
+    #random_sections = np.random.randint(2, size=sections, dtype=int)
     frames = []
     for i,section in enumerate(random_sections):
-        sectionrange = np.random.randint(50,200, size=1, dtype=int)[0]
+        sectionrange = np.random.randint(300,301, size=1, dtype=int)[0]
         section_df = full_df[[str(section)]]
         random_low = np.random.randint(len(section_df)-sectionrange+1, size=1)[0]
         section_df = section_df[random_low:random_low+sectionrange]

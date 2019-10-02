@@ -12,18 +12,20 @@ import sys
 import time
 import codecs
 
+import matplotlib
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error
 import scipy.io
 
 import include.network.net_constants as netco
 import include.network.net_setup as nets
 from include.utils import normalizeDataFrame
-from include.network.online import onlineData
+from include.network.online import onlineData,onlineData2
 #tf.reset_default_graph()   # To clear the defined variables and operations of the previous cell
 # create grap
 
@@ -141,7 +143,10 @@ class Network():
         seed = 3
         (n_x, m) = X_train.shape
         n_y = Y_train.shape[0]
-        costs = []
+        self.costs_train = []
+        self.costs_test = []
+        self.accuracy_train = []
+        self.accuracy_test = []
         with self.graph.as_default():
             serialized_tf_example = tf.compat.v1.placeholder(tf.string, name='tf_example')
             feature_configs = {'x': tf.io.FixedLenFeature(shape=[n_y], dtype=tf.float32),}
@@ -189,20 +194,30 @@ class Network():
                             (minibatch_X, minibatch_Y) = minibatch
                         
                             _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
+                            
                             epoch_cost += minibatch_cost / num_minibatches
                             minibar.update(n=1)
+                    self.costs_test.append(round(sess.run(cost,feed_dict={X: X_test, Y:Y_test}),4))
+                    self.costs_train.append(round(epoch_cost,4))
                     
-                    # [Print progress and the cost every epoch]
-                    if epoch % 1 == 0:
-                        pbar.set_description('Cost: {} '.format(round(epoch_cost,4)))
-                        pbar.refresh() # to show immediately the update
-                        pbar.update(n=1)
-                        costs.append(round(epoch_cost,4))
+                    if self.edition == netco.TREND or self.edition == netco.CYCLES:
+                        correct_prediction = tf.equal(output_function(final), output_function(Y))
+                        accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+                        train_acc = accuracy.eval({X: X_train, Y: Y_train})
+                        test_acc = accuracy.eval({X: X_test, Y: Y_test})
+                    else:
+                        predictions_train = sess.run(output_function(final),feed_dict={X: X_train})
+                        predictions_test = sess.run(output_function(final),feed_dict={X: X_test})
+                        train_acc = mean_absolute_error(Y_train, predictions_train)
+                        test_acc = mean_absolute_error(Y_test, predictions_test)
+                    self.accuracy_train.append(round(train_acc,4))
+                    self.accuracy_test.append(round(test_acc,4))
+
+                    pbar.set_description('Cost: {} '.format(round(epoch_cost,4)))
+                    pbar.refresh() # to show immediately the update
+                    pbar.update(n=1)
                     if epoch % 50 == 0:
                         print('')
-            if costs_flag:
-                print("")
-                print(costs)
             # [Saving the parameters in a variable]
             self.layers = sess.run(self.layers)
             print(self.cli_name,"Finished Neural Training!")
@@ -246,32 +261,22 @@ class Network():
             print(self.cli_name,"Time for training was",self.training_time,"seconds")
 
             # [Calculating the correct predictions]
-            correct_prediction = tf.equal(output_function(final), output_function(Y))
+            
             self.predictions_train = sess.run(output_function(final),feed_dict={X: X_train}).T
             self.predictions_test = sess.run(output_function(final),feed_dict={X: X_test}).T
             self.predictions = np.concatenate((self.predictions_train,self.predictions_test),axis=0)
             tf.compat.v1.summary.histogram("predictions", final)
-            # [Calculate accuracy on the test set]
-            accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-            self.train_acc = round(100*accuracy.eval({X: X_train, Y: Y_train}),2)
-            self.test_acc = round(100*accuracy.eval({X: X_test, Y: Y_test}),2)
-            print(self.cli_name+" Train Accuracy:", accuracy.eval({X: X_train, Y: Y_train}))
-            print(self.cli_name+" Test Accuracy:", accuracy.eval({X: X_test, Y: Y_test}))
+            print(self.cli_name+" Train Accuracy:", self.accuracy_train[-1])
+            print(self.cli_name+" Test Accuracy:",self.accuracy_test[-1])
+
             saver.save(sess, self.version_path+'/model.ckpt')
 
             X_ordered= X_data.drop(["LABEL"],axis=1)
             X_ordered = X_ordered.values.transpose()
-            ordered_predictions = sess.run(output_function(final),feed_dict={X: X_ordered}).T
-
-            show_df = pd.DataFrame()
-            show_df['TRUTH'] = X_data['LABEL']
-            show_df['PREDICTION'] = ordered_predictions
-            ax = show_df.plot()
-            plt.savefig(self.build_path+'/trained_model.pdf')
+            self.ordered_predictions = sess.run(output_function(final),feed_dict={X: X_ordered}).T
+            self.labels = X_data['LABEL']
             
-            self.network_training_summary_report()
-            plt.show()
-            
+            self.network_training_summary_report()            
         return self.predictions
         
     def init_layers(self):
@@ -356,8 +361,8 @@ class Network():
                 'Epochs: ' + str(self.epochs),
                 'Learning Rate: ' + str(self.learning_rate),
                 'Minibatch Size: ' + str(self.minibatch_size),
-                'Training Accuracy: ' + str(self.train_acc) + "%",
-                'Testing Accuracy: ' + str(self.test_acc) + "%",
+                'Training Accuracy: ' + str(self.accuracy_train[-1]) + "%",
+                'Testing Accuracy: ' + str(self.accuracy_test[-1]) + "%",
                 'Training Time: ' + str(self.training_time) + " seconds",
                 '',
                 '[PATHS]',
@@ -371,75 +376,45 @@ class Network():
         print(self.cli_name+" Exporting Information File to "+self.build_path)
         scipy.io.savemat(layers_path, self.layers)
 
-    def inference(self,window_settings,sample):
-        '''[TO BE CHANGED]'''
-        begin = time.time()
-        print(self.cli_name)
-        df = pd.read_csv(self.root_path+"/samples/"+sample,engine='python')
-        df = df.head(1000)
-        X_data = nets.cycleInference(df[['E_REV']],netco.CYCLES_FEATURES,window_settings,self.root_path,True)
-
-        n_X_data = normalizeDataFrame(X_data)
-        n_X_data = n_X_data.drop(["LABEL"],axis=1)
-        n_X_data = n_X_data.values.transpose()
-        self.layers_import(self.version_path+"/network_structure.json")
-        self.graph = tf.Graph()
-        
-        with self.graph.as_default():
-            saver = tf.compat.v1.train.import_meta_graph(self.version_path+'/model.ckpt.meta')
-        
-        with tf.compat.v1.Session(graph=self.graph) as sess:
-            saver.restore(sess, self.version_path+"/model.ckpt")
-            final = self.graph.get_tensor_by_name("Final:0")
-            X = self.graph.get_tensor_by_name("X:0")
-            self.predictions = sess.run(tf.argmax(final),feed_dict={X: n_X_data})
-        font = {'family': 'serif',
-            'color':  'darkred',
-            'weight': 'normal',
-            'size': 12,
-            }
-        fig1 = plt.figure(4)
-        plt.title('Inference Speed Profile', fontdict=font)
-        plt.xlabel('Time (s)', fontdict=font)
-        plt.ylabel('Engine Speed (rpm)', fontdict=font)
-        plt.ylim(0, 1)
-        plt.style.use('ggplot')
-        plot_feat = 'E_REV'
-        ax = df[plot_feat].plot()
-        x_lines = []
-        hold = 0
-        prev_hold = 0
-        for i in range(len(X_data)):
-            if self.predictions[i]!=self.predictions[i-1]:
-                hold = int(window_settings[0])+i*int(window_settings[1])
-                x_lines.append([prev_hold-1,hold-1,i-1])
-                prev_hold = hold
-
-        x_lines.append([x_lines[-1][1]-1,len(df)-1,len(X_data)-1])
-        del x_lines[0]
-        for pair in x_lines:
-            xs = np.arange(pair[0], pair[1])
-            ys = xs*0+0.5
-            prediction = str(self.predictions[pair[2]])
-            ax.text((pair[0]+pair[1])/2, 0.6, prediction,bbox=dict(facecolor='red', alpha=0.5))
-            plt.plot(xs, ys,'-b')
-            plt.plot(pair[0], 0.5, 'b<')
-            plt.plot(pair[1]-1, 0.5, 'b>')
-        
-        print(round(time.time()-begin,1),'Seconds')
-        
-        plt.show()
-
 class NNClassifier(Network):
     def __init__(self,edition,flag,base_name,root_path,features):
         Network.__init__(self,edition,flag,base_name,root_path,features)
+
+    def train(self,data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs):
+        super().train(data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs)
+        self.plot_accuracy()
+        self.plot_costs()
+
+    def plot_costs(self):
+        '''Timeplots of costs'''
+        t = np.arange(0.0, self.epochs, 1)
+        fig, ax = plt.subplots()
+        ax.plot(t, self.costs_train, label='Train Error')
+        ax.plot(t, self.costs_test, label='Test Error')
+        ax.set(xlabel='Epochs', ylabel='Softmax Cross Entropy',title='Training and Testing Errors for '+self.edition)
+        ax.grid()
+        plt.legend()
+        fig.savefig(self.build_path+'/costs.png',dpi=800)
+        plt.show()
+
+    def plot_accuracy(self):
+        '''Timeplots of accuracy'''
+        t = np.arange(0.0, self.epochs, 1)
+        fig, ax = plt.subplots()
+        ax.plot(t, self.accuracy_train, label='Train Accuracy')
+        ax.plot(t, self.accuracy_test, label='Test Accuracy')
+        ax.set(xlabel='Epochs', ylabel='Accuracy',title='Training and Testing Accuracy for '+self.edition)
+        ax.grid()
+        plt.legend()
+        fig.savefig(self.build_path+'/accuracy.png',dpi=800)
+        plt.show()
 
     def inference(self,data,window_settings):
         '''def inference(self,data,window_settings):
         
         '''
-        self.function = netco.INFERENCE
-        #full_df = pd.read_csv(os.path.join(self.root_path,'samples',data))
+        self.function = netco.INFERENCE 
+        
         full_df = data
         self.layers_import(self.version_path+"/network_structure.json")
         self.graph = tf.Graph()
@@ -455,49 +430,179 @@ class NNClassifier(Network):
 
                 if re.search(pattern_b, str(op.name)) is not None:
                     self.layers["b"+str(layer_counter)] = tf.cast(self.graph.get_tensor_by_name(str(op.name)+str(':0')), tf.float64,name="b"+str(layer_counter))
-        targets=[]
         # Start reading datas
-        low_indx = 0
-        high_indx = 0
         X = tf.cast(self.graph.get_tensor_by_name("X:0"), tf.float64)
         final = self.forward_propagation(X)
-        predictions = []
+        
         with tf.compat.v1.Session(graph=self.graph) as sess:
             sess.run(tf.global_variables_initializer())
             saver.restore(sess, self.version_path+"/model.ckpt")
             n_X_data = self.normalize(full_df)
             X_inf = n_X_data.values.transpose()
             predictions = sess.run(tf.argmax(final),feed_dict={X: X_inf})
-            '''
-            for index, row in full_df[['E_REV']].iterrows():
-                if index<int(window_settings[0]):
-                    targets.append(row[0])
-                    predictions.append(-1)
-                else:
-                    low_indx+=1
-                    #print(50*'-')
-                    del targets[0]
-                    targets.append(row[0])
-                    window_df = pd.Series(targets)
-                    X_data = onlineData(self.edition,window_df)
-                    n_X_data = self.normalize(X_data)
-                    X_inf = n_X_data.values.transpose()
-                    prediction = sess.run(tf.argmax(final),feed_dict={X: X_inf})
-                    predictions.append(prediction[0])
-                    print(low_indx,'-',high_indx)
-                    #required_df = full_df.iloc[high]
-                    #required_df['LABEL'] = go['LABEL'][0]
-                    #print(required_df)
-                high_indx+=1
-            '''
+
         full_df[netco.PREDICTION_LABEL] = predictions
+        full_df.plot()
+        
+               
+        '''
+        full_df = pd.read_csv(os.path.join(self.root_path,'samples',data))
+        
+        full_df=full_df.head(1500)
+        window_size = 60
+        window_step = 1
+        window_settings =[window_size,window_step]
+        with tf.compat.v1.Session(graph=self.graph) as sess:
+            sess.run(tf.global_variables_initializer())
+            saver.restore(sess, self.version_path+"/model.ckpt")
+            fit_df = onlineData2(full_df['E_REV'],window_settings)
+            n_X_data = self.normalize(fit_df)
+            X_inf = n_X_data.values.transpose()
+            predictions = sess.run(tf.argmax(final),feed_dict={X: X_inf}).T
+        
+
+        font = {#'family':'',
+        'weight':'normal',
+        'size': 14,
+        }
+        CLASSES = {0:'PC 1',1:'PC 2',2:'PC 3',3:'PC 4',4:'PC 5',5:'PC 6'}
+        plt.show()
+        matplotlib.rc('font', **font)
+        fig, ax = plt.subplots()
+        t = np.arange(0, len(full_df), 1)
+        t2 = np.arange(window_size-1, len(full_df), 1)
+        ax.plot(t, full_df['E_REV'], label='Pitch Cycle',color='green')
+        x_lines = [window_size-1]
+        hold = 0
+        prev_hold = 0
+        for i,prediction in enumerate(predictions):
+            if i==0:
+                pass
+            else:
+                if prev_prediction != prediction:
+                    x_lines.append(i+window_size-1)
+            prev_prediction = prediction
+        x_lines.append(len(full_df))
+        for i,x in enumerate(x_lines):
+            if i==0:
+                pass
+            else:
+                xs = np.arange(x_lines[i-1], x_lines[i])
+
+                ys = xs*0+0.8
+                ax.plot(xs, ys, label='Predicted Cycle' if i == 1 else "",color='red')
+                if len(xs)==1:
+                    prediction = predictions[int(xs[-1]-window_size+1)]
+                else:
+                    prediction = predictions[int(xs[-1]-window_size+1)]
+                if i%2==0:
+                    ax.text(int(xs.mean()), 0.82, CLASSES[prediction],color='red')
+                else:
+                    ax.text(int(xs.mean()), 0.76, CLASSES[prediction],color='red')
+                
+                ax.plot(xs[0], 0.8, 'r<')
+                ax.plot(xs[-1], 0.8, 'r>')
+
+        x_lines=[0]
+        labels = list(full_df['LABEL'])
+        for i,label in enumerate(labels):
+            if i==0:
+                pass
+            else:
+                if prev_laber!= label:
+                    x_lines.append(i)
+            prev_laber = label
+        x_lines.append(len(full_df))
+        for i,x in enumerate(x_lines):
+            if i==0:
+                pass
+            else:
+                xs = np.arange(x_lines[i-1], x_lines[i])
+                ys = xs*0+0.9
+                ax.plot(xs, ys, label='Actual Cycle' if i == 1 else "",color='blue')
+                label = labels[int(xs.mean())]
+                if i%2==0:
+                    ax.text(int(xs.mean()), 0.92, CLASSES[label],color='blue')
+                else:
+                    ax.text(int(xs.mean()), 0.86, CLASSES[label],color='blue')
+                
+                ax.plot(xs[0], 0.9, 'b<')
+                ax.plot(xs[-1], 0.9, 'b>')
+        
+        ax.set(xlabel=r'$\mathbf{Time}$ (sec)', ylabel=r'$\mathbf{\beta}$ / $\mathbf{\beta_{max}}$',title='Prediction Cycle')
+        ax.grid()
+        plt.ylim(0,1)
+        plt.legend()
+        fig.savefig(os.path.join(self.version_path,data.split('.')[0]+'_cycle_inference.png'),dpi=800)
+        plt.show()
+        pd.DataFrame(predictions).to_csv(os.path.join(self.version_path,data.split('.')[0]+'_cycle_inference.csv'))
+        full_df.to_csv(os.path.join(self.version_path,data.split('.')[0]+'_cycle_data.csv'))
+        full_df = full_df.tail(len(predictions))
+        n = 0
+        
+        for i in range(len(predictions)):
+            if int(list(full_df['LABEL'])[i])==predictions[i]:
+                n+=1
+        acc=n/len(predictions)
+        print(acc)
+        
+        '''
         return full_df
        
 class NNRegressor(Network):
     def __init__(self,edition,flag,base_name,root_path,features):
         Network.__init__(self,edition,flag,base_name,root_path,features)
 
-    def inference(self,data):
-        sim_dir = os.path.join(os.getcwd(),netco.SIMULATIONS)
-        sim_df = pd.read_csv(os.path.join(sim_dir,'simulation_0.csv'))
+    def train(self,data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs):
+        cycle_full = self.root_path.split('/')[-1]
+        cycle = cycle_full.split('_')[-1]
+        
+        super().train(data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs)
+        self.plot_trained(cycle)
+        self.plot_costs(cycle)
+        self.plot_predictions(cycle)
+        plt.close('all')
+        
+        #plt.show()
+
+    def plot_trained(self,cycle):
+        fig, ax = plt.subplots()
+        t = np.arange(0.0, len(self.labels), 1)
+        ax.plot(t, self.labels, label='NMPC',color='blue')
+        ax.plot(t, self.ordered_predictions, label='NN',color='red')
+        ax.set(xlabel='Time [Secs]', ylabel='Torque [Nm]',title=self.edition+' Torque (Cycle '+cycle+')')
+        ax.grid()
+        plt.legend()
+        fig.savefig(self.build_path+'/trained_model_cycle_'+cycle+'.png',dpi=800)
+
+    def plot_predictions(self,cycle):
+        fig, ax = plt.subplots()
+        ax.scatter(self.test_df['LABEL'], self.predictions_test,color='red')
+        ax.set(xlabel='True Values [Torque]', ylabel='Predictions [Torque]',title=self.edition+' Predictions (Cycle '+cycle+')')
+        ax.axis('equal')
+        ax.axis('square')
+        ax.grid()
+
+        if self.edition==netco.ENGINE:
+            plt.xlim([0,plt.xlim()[1]])
+            plt.ylim([0,plt.ylim()[1]])
+        elif self.edition==netco.MOTOR:
+            plt.xlim([-plt.xlim()[1],plt.xlim()[1]])
+            plt.ylim([-plt.ylim()[1],plt.ylim()[1]])
+        _ = plt.plot([-2000, 2000], [-2000, 2000])
+        
+        fig.savefig(self.build_path+'/predictions_cycle_'+cycle+'.png',dpi=800)
+
+    def plot_costs(self,cycle):
+        '''Timeplots of costs'''
+        t = np.arange(0.0, self.epochs, 1)
+        fig, ax = plt.subplots()
+        ax.plot(t, self.costs_train, label='Train Error')
+        ax.plot(t, self.costs_test, label='Test Error')
+        ax.set(xlabel='Epochs', ylabel='Mean Absolute Error (Torque)',title=self.edition+' Training and Testing Errors (Cycle '+cycle+')')
+        ax.grid()
+        plt.legend()
+        fig.savefig(self.build_path+'/costs_cycle_'+cycle+'.png',dpi=800)
+
+        
 

@@ -127,7 +127,7 @@ class creationToplevelClassificationGUI(tk.Toplevel):
         
         root_path = os.path.join(os.getcwd(),netco.CLASSIFIERS,self.parent.network_edition.get(),self.parent.model.get())
 
-        self.network = net.Network(self.parent.network_edition.get(),netco.CREATE,network_name,root_path,features)
+        self.network = net.NNClassifier(self.parent.network_edition.get(),netco.CREATE,network_name,root_path,features)
 
         structure_data = []
         for i in range(layers):
@@ -183,11 +183,11 @@ class trainToplevelClassificationGUI(tk.Toplevel):
         self.network_version['values'] = sorted(networks)      
         self.network_version.current(0)
         self.network_version.place(x=x_list_place,y=40)
-        self.network = net.Network(self.parent.network_edition.get(),netco.LOAD,self.network_version.get(),self.root_path,features)
+        self.network = net.NNClassifier(self.parent.network_edition.get(),netco.LOAD,self.network_version.get(),self.root_path,features)
         self.network.layers_import(self.network.version_path+"/network_structure.json")
 
         def callback():
-            self.network = net.Network(self.parent.network_edition.get(),netco.LOAD,self.network_version.get(),self.root_path,features)
+            self.network = net.NNClassifier(self.parent.network_edition.get(),netco.LOAD,self.network_version.get(),self.root_path,features)
             self.network.layers_import(self.network.version_path+"/network_structure.json")
 
         self.network_version.bind("<<ComboboxSelected>>", lambda _ : callback())
@@ -195,7 +195,7 @@ class trainToplevelClassificationGUI(tk.Toplevel):
         epochs_l = tk.Label(self,text="Epochs:",bg=self['bg'],fg = self.parent.parent.theme.bg)
         epochs_l.place(x=1,y=60)
         epochs = ttk.Combobox(self,state="readonly")
-        epochs['values'] = (1,100,150,200,500,1000,2000)
+        epochs['values'] = (1,10,100,150,200,500,1000,2000)
         epochs.current(0)
         epochs.place(x=x_list_place,y=60)
 
@@ -337,6 +337,7 @@ class creationToplevelControlGUI(tk.Toplevel):
         save_button['bg'] = self.parent.parent.theme.bg
         save_button['fg'] = self.parent.parent.theme.fg
         save_button.place(x=300,y=500)
+        self.bind('<Return>', lambda event:slf.create_nncontroller())
         self.mainloop()
 
     def callback_layers_creation(self,frame):
@@ -377,7 +378,7 @@ class creationToplevelControlGUI(tk.Toplevel):
         frame.activationValues = []
         for i in range(frame.layers):
             if i == 0:
-                frame.inValues.append(tk.StringVar(value=str(len(features))))
+                frame.inValues.append(tk.StringVar(value=str(len(features)-1)))
             else:
                 frame.inValues.append(tk.StringVar())
             frame.inValues[i].trace('w',limitSize)
@@ -544,7 +545,7 @@ class trainToplevelControlGUI(tk.Toplevel):
             self.networks_ice.append(network_ice)
 
             network_emot = net.NNRegressor(netco.MOTOR,netco.LOAD,netco.NN_EMOT+'_1',cycle_path,netco.EMOT_FEATURES)
-            network_emot.layers_import(network_ice.version_path+"/network_structure.json")
+            network_emot.layers_import(network_emot.version_path+"/network_structure.json")
             self.networks_emot.append(network_emot)
 
         def callback():
@@ -565,7 +566,7 @@ class trainToplevelControlGUI(tk.Toplevel):
                 self.networks_ice.append(network_ice)
 
                 network_emot = net.NNRegressor(netco.MOTOR,netco.LOAD,netco.NN_EMOT+'_1',cycle_path,netco.EMOT_FEATURES)
-                network_emot.layers_import(network_ice.version_path+"/network_structure.json")
+                network_emot.layers_import(network_emot.version_path+"/network_structure.json")
                 self.networks_emot.append(network_emot)
 
         self.controller.bind("<<ComboboxSelected>>", lambda _ : callback())
@@ -682,52 +683,63 @@ class trainToplevelControlGUI(tk.Toplevel):
         offset_x = (width_sc-width)/2
         offset_y = (heigth_sc-heigth)/2
         self.geometry("%dx%d+%d+%d" % (width,heigth,offset_x,offset_y))
-        self.configure(bg="#000000")
         self.configure(bg=self.parent.parent.theme.fg)
     
     def training(self,epochs,learning_rate,mini_batch,shuffle,test_size):
         window_settings = [int(self.model_trend.get().split('_')[1]),int(self.model_trend.get().split('_')[2])]
-        #for cycle in range(netco.CYCLES_OUTPUTS):
-        for cycle in range(2):
-            cycle_data = pd.read_csv(os.path.join(self.model_path,netco.INFERENCE+'_'+str(cycle)+'.csv'))
-            labels = cycle_data['LABEL']
-            cycle_data=cycle_data.drop('LABEL',axis=1)
-            cycle_data = self.trend_classifier.inference(cycle_data,window_settings)
-            cycle_data['LABEL']=labels
-
-            data_ice = pd.read_csv(os.path.join(os.getcwd(),netco.SIMULATIONS,"simulation_"+str(cycle)+".csv"))#,usecols=netco.ENG_FEATURES)
-            data_ice=data_ice.drop(['TQ_EMOT'],axis=1)
-            data_ice = data_ice.rename(columns={"TQ_ICE": "LABEL"})
-            data_ice = data_ice.tail(1592)
-            data_ice = data_ice.reset_index(drop=True)
-            data_ice = data_ice.head(1485)
-            data_ice['Dead Stop'] = (cycle_data[netco.PREDICTION_LABEL] == 0)*1.0
-            data_ice['Low Speed'] = (cycle_data[netco.PREDICTION_LABEL] == 1)*1.0
-            data_ice['Mid Speed'] = (cycle_data[netco.PREDICTION_LABEL] == 2)*1.0
-            data_ice['High Speed'] = (cycle_data[netco.PREDICTION_LABEL] == 3)*1.0
-            data_ice['Acceleration'] = (cycle_data[netco.PREDICTION_LABEL] == 4)*1.0
-            data_ice['Deceleration'] = (cycle_data[netco.PREDICTION_LABEL] == 5)*1.0
-            print(data_ice)
+        for cycle in range(netco.CYCLES_OUTPUTS):
+            #cycle_data = pd.read_csv(os.path.join(self.model_path,netco.INFERENCE+'_'+str(cycle)+'.csv'))
             
-            data_emot = pd.read_csv(os.path.join(os.getcwd(),netco.SIMULATIONS,"simulation_"+str(cycle)+".csv"))#,usecols=netco.EMOT_FEATURES)
-            data_emot=data_emot.drop(['TQ_ICE'],axis=1)
+            #cycle_data = cycle_data.shift(periods=60, fill_value=0)
+            #cycle_data = pd.concat([cycle_data, cycle_data.tail(60)])
+            #cycle_data = cycle_data.reset_index(drop=True)
+            #print(cycle_data)
+            
+            #labels = cycle_data['LABEL']
+            #cycle_data = cycle_data.drop('LABEL',axis=1)
+            #cycle_data = self.trend_classifier.inference(cycle_data,window_settings)
+            #cycle_data['LABEL']=labels
+            
+            data_ice = pd.read_csv(os.path.join(os.getcwd(),netco.SIMULATIONS,"simulation_"+str(cycle+1)+".csv"))#,usecols=netco.ENG_FEATURES)
+            data_ice = data_ice.drop(['TQ_EMOT'],axis=1)
+            data_ice = data_ice.rename(columns={"TQ_ICE": "LABEL"})
+            #data_ice = data_ice.shift(periods=9, fill_value=0)
+            #data_ice = pd.concat([data_ice, data_ice.tail(9)])
+            #data_ice = data_ice.reset_index(drop=True)
+            #data_ice['DEAD_STOP'] = (cycle_data[netco.PREDICTION_LABEL] == 0)*1.0
+            #data_ice['LOW_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 1)*1.0
+            #data_ice['MID_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 2)*1.0
+            #data_ice['HIGH_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 3)*1.0
+            #data_ice['ACCE'] = (cycle_data[netco.PREDICTION_LABEL] == 4)*1.0
+            #data_ice['DECE'] = (cycle_data[netco.PREDICTION_LABEL] == 5)*1.0
+            #data_ice = data_ice.head(1722)
+            
+            #data_ice = pd.concat([data_ice, data_ice[30:180],data_ice[30:180],data_ice[30:180],data_ice[30:180]])
+            #data_ice = data_ice.reset_index(drop=True)
+            #data_ice.to_csv(os.path.join(self.networks_ice[cycle].version_path,'data_ice.csv'),index=False)
+            #data_ice.plot()
+            #plt.show()
+            
+            data_emot = pd.read_csv(os.path.join(os.getcwd(),netco.SIMULATIONS,"simulation_"+str(cycle+1)+".csv"))#,usecols=netco.EMOT_FEATURES)
+            data_emot = data_emot.drop(['TQ_ICE'],axis=1)
             data_emot = data_emot.rename(columns={"TQ_EMOT": "LABEL"})
-            data_emot = data_emot.tail(1592)
-            data_emot = data_emot.reset_index(drop=True)
-            data_emot = data_emot.head(1492)
-            data_emot['Dead Stop'] = (cycle_data[netco.PREDICTION_LABEL] == 0)*1.0
-            data_emot['Low Speed'] = (cycle_data[netco.PREDICTION_LABEL] == 1)*1.0
-            data_emot['Mid Speed'] = (cycle_data[netco.PREDICTION_LABEL] == 2)*1.0
-            data_emot['High Speed'] = (cycle_data[netco.PREDICTION_LABEL] == 3)*1.0
-            data_emot['Acceleration'] = (cycle_data[netco.PREDICTION_LABEL] == 4)*1.0
-            data_emot['Deceleration'] = (cycle_data[netco.PREDICTION_LABEL] == 5)*1.0
-        
+            #data_emot = data_emot.shift(periods=9, fill_value=0)
+            #data_emot = pd.concat([data_emot, data_emot.tail(9)])
+            #data_emot = data_emot.reset_index(drop=True)
+            #data_emot['DEAD_STOP'] = (cycle_data[netco.PREDICTION_LABEL] == 0)*1.0
+            #data_emot['LOW_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 1)*1.0
+            #data_emot['MID_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 2)*1.0
+            #data_emot['HIGH_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 3)*1.0
+            #data_emot['ACCE'] = (cycle_data[netco.PREDICTION_LABEL] == 4)*1.0
+            #data_emot['DECE'] = (cycle_data[netco.PREDICTION_LABEL] == 5)*1.0
+            #data_emot = data_emot.head(1722)
+            #data_emot.to_csv(os.path.join(self.networks_emot[cycle].version_path,'data_emot.csv'),index=False)
+            
             self.networks_ice[cycle].train(data_ice,epochs,learning_rate,mini_batch,shuffle,test_size,netco.ENG_OUTPUTS)
             
             self.networks_emot[cycle].train(data_emot,epochs,learning_rate,mini_batch,shuffle,test_size,netco.EMOT_OUTPUTS)
-            
         
-
+            
 
     def callback_trend(self):
         if os.path.exists(self.trend_root_path):
