@@ -24,7 +24,7 @@ import scipy.io
 
 import include.network.net_constants as netco
 import include.network.net_setup as nets
-from include.utils import normalizeDataFrame
+from include.utils import normalizeDataFrame, round_down
 from include.network.online import onlineData,onlineData2
 #tf.reset_default_graph()   # To clear the defined variables and operations of the previous cell
 # create grap
@@ -161,10 +161,10 @@ class Network():
             # [Adding cost function for the Adam optimizer to the graph]
             #cost = nets.softmax_cross_entropy(final, Y)
             if self.edition == netco.TREND or self.edition == netco.CYCLES:
-                loss = 'softmax_cross_entropy'
+                loss = netco.SOFTMAX_CROSS_ENTROPY
                 output_function = tf.argmax
             else:
-                loss = 'mean_squared_error'
+                loss = netco.MEAN_SQR_ERROR
                 output_function = tf.identity
             cost = nets.network_cost_function(final, Y, loss)
             optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate).minimize(cost)
@@ -406,6 +406,7 @@ class NNClassifier(Network):
         ax.set(xlabel='Epochs', ylabel='Accuracy',title='Training and Testing Accuracy for '+self.edition)
         ax.grid()
         plt.legend()
+        plt.ylim(round_down(min(self.accuracy_test)-0.05,2),1)
         fig.savefig(self.build_path+'/accuracy.png',dpi=800)
         plt.show()
 
@@ -415,7 +416,7 @@ class NNClassifier(Network):
         '''
         self.function = netco.INFERENCE 
         
-        full_df = data
+        #full_df = data
         self.layers_import(self.version_path+"/network_structure.json")
         self.graph = tf.Graph()
         with self.graph.as_default():
@@ -433,24 +434,25 @@ class NNClassifier(Network):
         # Start reading datas
         X = tf.cast(self.graph.get_tensor_by_name("X:0"), tf.float64)
         final = self.forward_propagation(X)
-        
+        '''
         with tf.compat.v1.Session(graph=self.graph) as sess:
             sess.run(tf.global_variables_initializer())
             saver.restore(sess, self.version_path+"/model.ckpt")
             n_X_data = self.normalize(full_df)
             X_inf = n_X_data.values.transpose()
             predictions = sess.run(tf.argmax(final),feed_dict={X: X_inf})
+        
 
         full_df[netco.PREDICTION_LABEL] = predictions
-        full_df.plot()
-        
-               
         '''
+        #full_df.plot()
+
         full_df = pd.read_csv(os.path.join(self.root_path,'samples',data))
-        
-        full_df=full_df.head(1500)
-        window_size = 60
-        window_step = 1
+
+        #full_df=full_df.head(1500)
+        #full_df = full_df[900:1700]
+        window_size = int(self.root_path.split('/')[-1].split('_')[1])
+        window_step = int(self.root_path.split('/')[-1].split('_')[2])
         window_settings =[window_size,window_step]
         with tf.compat.v1.Session(graph=self.graph) as sess:
             sess.run(tf.global_variables_initializer())
@@ -460,15 +462,15 @@ class NNClassifier(Network):
             X_inf = n_X_data.values.transpose()
             predictions = sess.run(tf.argmax(final),feed_dict={X: X_inf}).T
         
-
+        
         font = {#'family':'',
         'weight':'normal',
         'size': 14,
         }
         CLASSES = {0:'PC 1',1:'PC 2',2:'PC 3',3:'PC 4',4:'PC 5',5:'PC 6'}
-        plt.show()
+        #plt.show()
         matplotlib.rc('font', **font)
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(10,8))
         t = np.arange(0, len(full_df), 1)
         t2 = np.arange(window_size-1, len(full_df), 1)
         ax.plot(t, full_df['E_REV'], label='Pitch Cycle',color='green')
@@ -496,9 +498,9 @@ class NNClassifier(Network):
                 else:
                     prediction = predictions[int(xs[-1]-window_size+1)]
                 if i%2==0:
-                    ax.text(int(xs.mean()), 0.82, CLASSES[prediction],color='red')
+                    ax.text(int(xs.mean()), 0.82, CLASSES[prediction],color='red',fontsize=20)
                 else:
-                    ax.text(int(xs.mean()), 0.76, CLASSES[prediction],color='red')
+                    ax.text(int(xs.mean()), 0.76, CLASSES[prediction],color='red',fontsize=20)
                 
                 ax.plot(xs[0], 0.8, 'r<')
                 ax.plot(xs[-1], 0.8, 'r>')
@@ -522,9 +524,9 @@ class NNClassifier(Network):
                 ax.plot(xs, ys, label='Actual Cycle' if i == 1 else "",color='blue')
                 label = labels[int(xs.mean())]
                 if i%2==0:
-                    ax.text(int(xs.mean()), 0.92, CLASSES[label],color='blue')
+                    ax.text(int(xs.mean()), 0.92, CLASSES[label],color='blue',fontsize=20)
                 else:
-                    ax.text(int(xs.mean()), 0.86, CLASSES[label],color='blue')
+                    ax.text(int(xs.mean()), 0.86, CLASSES[label],color='blue',fontsize=20)
                 
                 ax.plot(xs[0], 0.9, 'b<')
                 ax.plot(xs[-1], 0.9, 'b>')
@@ -534,10 +536,12 @@ class NNClassifier(Network):
         plt.ylim(0,1)
         plt.legend()
         fig.savefig(os.path.join(self.version_path,data.split('.')[0]+'_cycle_inference.png'),dpi=800)
-        plt.show()
+        
+        
         pd.DataFrame(predictions).to_csv(os.path.join(self.version_path,data.split('.')[0]+'_cycle_inference.csv'))
         full_df.to_csv(os.path.join(self.version_path,data.split('.')[0]+'_cycle_data.csv'))
         full_df = full_df.tail(len(predictions))
+        print(full_df)
         n = 0
         
         for i in range(len(predictions)):
@@ -545,8 +549,8 @@ class NNClassifier(Network):
                 n+=1
         acc=n/len(predictions)
         print(acc)
+        plt.show()
         
-        '''
         return full_df
        
 class NNRegressor(Network):
@@ -556,6 +560,7 @@ class NNRegressor(Network):
     def train(self,data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs):
         cycle_full = self.root_path.split('/')[-1]
         cycle = cycle_full.split('_')[-1]
+        cycle = str(int(cycle)+1)
         
         super().train(data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs)
         self.plot_trained(cycle)
@@ -574,6 +579,11 @@ class NNRegressor(Network):
         ax.grid()
         plt.legend()
         fig.savefig(self.build_path+'/trained_model_cycle_'+cycle+'.png',dpi=800)
+        frame = pd.DataFrame()
+        frame['LABEL'] = self.labels
+        frame['PREDICTION'] = self.ordered_predictions
+        frame.to_csv(os.path.join(self.build_path,'results_'+self.edition+'_'+cycle+'.csv'),index=False)
+
 
     def plot_predictions(self,cycle):
         fig, ax = plt.subplots()

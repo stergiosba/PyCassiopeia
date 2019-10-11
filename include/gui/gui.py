@@ -22,15 +22,15 @@ class MainApplication(ttk.Notebook):
         windows_tab = windowsFrame(self)
         class_networks_tab = classficiationNetworksFrame(self)
         control_network_tab = controlNetworksFrame(self)
-        simulation_tab = simulationFrame(self)
+        #simulation_tab = simulationFrame(self)
 
         self.add(windows_tab, text = "Windows")
         self.add(class_networks_tab, text = "Classification NET")
         self.add(control_network_tab, text= "Control NET")
-        self.add(simulation_tab, text= "Simulation")
+        #self.add(simulation_tab, text= "Simulation")
 
 class GUI(tk.Tk):
-    def __init__(self,title="Cassiopeia Control"):
+    def __init__(self,title="Cassiopeia Control Panel"):
         tk.Tk.__init__(self)
         self.settingsGUI(title)
         MainApplication(self).pack(side="top", fill="both", expand=True)

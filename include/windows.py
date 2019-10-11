@@ -59,8 +59,10 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
                 counter_P_N_3050 = 0
                 counter_P_N_5070 = 0
                 counter_P_N_70100 = 0
-                counter_P_D_12 = 0
-                counter_P_D_23 = 0
+                counter_P_D_1 = 0
+                counter_P_D_2 = 0
+                counter_P_A_1 = 0
+                counter_P_A_2 = 0
                 for time_step in window_df.index:
                     if window_df[time_step]<=0.30:
                         counter_P_N_030+=1
@@ -76,12 +78,16 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
                         acc = window_df[time_step]-window_df[time_step-1]
                         if acc > 0:
                             acc_list.append(acc)
+                            if 0<acc<0.003:
+                                counter_P_A_1+=1
+                            elif 0.003:
+                                counter_P_A_2+=1
                         else:
                             dec_list.append(acc)
-                            if acc<-0.05:
-                                counter_P_D_12+=1
-                            if -0.05<acc<-0.01:
-                                counter_P_D_23+=1
+                            if -0.005<acc<0:
+                                counter_P_D_1+=1
+                            else:
+                                counter_P_D_2+=1
                 if len(dec_list) == 0:
                     ave_win_dec = 0
                     max_win_dec = 0
@@ -99,6 +105,7 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
                     ave_win_acc = stats.mean(acc_list)
                     max_win_acc = max(acc_list)
                     std_win_acc = stats.stdev(acc_list)
+
                 Cycle_Final = Cycle_Final.append({
                 'LABEL': cycle,
                 'N_MAX': round(window_df.max(),4),
@@ -111,9 +118,11 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
                 'P_N_030': round(counter_P_N_030/len(window_df),4),
                 'P_N_3050': round(counter_P_N_3050/len(window_df),4),
                 'P_N_5070': round(counter_P_N_5070/len(window_df),4),
-                'P_N_70100':round(counter_P_N_70100/len(window_df),4)
-                #'P_D_12':1,
-                #'P_D_23':1
+                'P_N_70100':round(counter_P_N_70100/len(window_df),4),
+                'P_D_1':round(counter_P_D_1/len(window_df),4),
+                'P_D_2':round(counter_P_D_2/len(window_df),4),
+                'P_A_1':round(counter_P_A_1/len(window_df),4),
+                'P_A_2':round(counter_P_A_2/len(window_df),4)
                 },ignore_index=True)
                 prev_cycle = cycle
                 w_start+=w_step

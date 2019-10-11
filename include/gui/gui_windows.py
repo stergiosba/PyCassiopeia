@@ -32,12 +32,12 @@ class windowsFrame(tk.Frame):
         trend_window_step.current(0)
         trend_window_step.place(x=111,y=60)
 
-        trend_ex_button = tk.Button(windows_set_canvas,text="Create Trend Windows",command=lambda:trend_windows_execute(int(trend_window_size.get()),int(trend_window_step.get())))
+        trend_ex_button = tk.Button(windows_set_canvas,text="Create Trend Windows",command=lambda:trend_windows_execute(int(trend_window_size.get()),int(trend_window_step.get())),height = 2, width = 20)
         trend_ex_button['bg'] = parent.theme.bg
         trend_ex_button['fg'] = parent.theme.fg
-        trend_ex_button.place(x=151,y=200)
+        trend_ex_button.place(x=111,y=100)
 
-        label = tk.Label(windows_set_canvas,text="Pitch ANg;e Cycles Window Settings",bg=windows_set_canvas['bg'],fg=parent.theme.selected_fg)
+        label = tk.Label(windows_set_canvas,text="Pitch Angle Cycles Window Settings",bg=windows_set_canvas['bg'],fg=parent.theme.selected_fg)
         label.place(x=401,y=10)
 
         cycles_window_size_l = tk.Label(windows_set_canvas,text="Window Size:",bg=windows_set_canvas['bg'],fg=parent.theme.selected_fg)
@@ -54,7 +54,7 @@ class windowsFrame(tk.Frame):
         cycles_window_step.current(0)
         cycles_window_step.place(x=511,y=60)
 
-        cycle_ex_button = tk.Button(windows_set_canvas,text="Create Cycles Windows",command=lambda:cycles_windows_execute(int(cycles_window_size.get()),int(cycles_window_step.get())))
+        cycle_ex_button = tk.Button(windows_set_canvas,text="Create Cycles Windows",command=lambda:cycles_windows_execute(int(cycles_window_size.get()),int(cycles_window_step.get())),height = 2, width = 20)
         cycle_ex_button['bg'] = parent.theme.bg
         cycle_ex_button['fg'] = parent.theme.fg
-        cycle_ex_button.place(x=451,y=200)
+        cycle_ex_button.place(x=511,y=100)

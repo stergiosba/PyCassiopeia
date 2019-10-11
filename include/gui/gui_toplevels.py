@@ -98,7 +98,7 @@ class creationToplevelClassificationGUI(tk.Toplevel):
             activationEntry.grid(row=5+i,column=2)
             self.activationValues.append(activationEntry)
             
-        save_button = tk.Button(self,text="Save",command=lambda:self.create_network())
+        save_button = tk.Button(self,text="Save",command=lambda:self.create_network(),height = 2, width = 20)
         save_button['bg'] = self.parent.parent.theme.bg
         save_button['fg'] = self.parent.parent.theme.fg
         save_button.grid(row=layers+5,column=1,pady=25)
@@ -227,7 +227,7 @@ class trainToplevelClassificationGUI(tk.Toplevel):
         test_size.current(0)
         test_size.place(x=x_list_place,y=140)
 
-        train_button = tk.Button(self,text="Train",command=lambda:self.training(int(epochs.get()),float(learning_rate.get()),int(mini_batch.get()),shuffle.get(),float(test_size.get())))
+        train_button = tk.Button(self,text="Train",command=lambda:self.training(int(epochs.get()),float(learning_rate.get()),int(mini_batch.get()),shuffle.get(),float(test_size.get())),height = 2, width = 20)
         train_button['bg'] = self.parent.parent.theme.bg
         train_button['fg'] = self.parent.parent.theme.fg
         train_button.place(x=x_list_place,y=180)
@@ -378,7 +378,7 @@ class creationToplevelControlGUI(tk.Toplevel):
         frame.activationValues = []
         for i in range(frame.layers):
             if i == 0:
-                frame.inValues.append(tk.StringVar(value=str(len(features)-1)))
+                frame.inValues.append(tk.StringVar(value=str(len(features))))
             else:
                 frame.inValues.append(tk.StringVar())
             frame.inValues[i].trace('w',limitSize)
@@ -688,17 +688,17 @@ class trainToplevelControlGUI(tk.Toplevel):
     def training(self,epochs,learning_rate,mini_batch,shuffle,test_size):
         window_settings = [int(self.model_trend.get().split('_')[1]),int(self.model_trend.get().split('_')[2])]
         for cycle in range(netco.CYCLES_OUTPUTS):
-            #cycle_data = pd.read_csv(os.path.join(self.model_path,netco.INFERENCE+'_'+str(cycle)+'.csv'))
+            cycle_data = pd.read_csv(os.path.join(self.model_path,netco.INFERENCE+'_'+str(cycle)+'.csv'))
             
-            #cycle_data = cycle_data.shift(periods=60, fill_value=0)
-            #cycle_data = pd.concat([cycle_data, cycle_data.tail(60)])
-            #cycle_data = cycle_data.reset_index(drop=True)
+            cycle_data = cycle_data.shift(periods=60, fill_value=0)
+            cycle_data = pd.concat([cycle_data, cycle_data.tail(60)])
+            cycle_data = cycle_data.reset_index(drop=True)
             #print(cycle_data)
             
-            #labels = cycle_data['LABEL']
-            #cycle_data = cycle_data.drop('LABEL',axis=1)
-            #cycle_data = self.trend_classifier.inference(cycle_data,window_settings)
-            #cycle_data['LABEL']=labels
+            labels = cycle_data['LABEL']
+            cycle_data = cycle_data.drop('LABEL',axis=1)
+            cycle_data = self.trend_classifier.inference(cycle_data,window_settings)
+            cycle_data['LABEL']=labels
             
             data_ice = pd.read_csv(os.path.join(os.getcwd(),netco.SIMULATIONS,"simulation_"+str(cycle+1)+".csv"))#,usecols=netco.ENG_FEATURES)
             data_ice = data_ice.drop(['TQ_EMOT'],axis=1)
@@ -706,18 +706,17 @@ class trainToplevelControlGUI(tk.Toplevel):
             #data_ice = data_ice.shift(periods=9, fill_value=0)
             #data_ice = pd.concat([data_ice, data_ice.tail(9)])
             #data_ice = data_ice.reset_index(drop=True)
-            #data_ice['DEAD_STOP'] = (cycle_data[netco.PREDICTION_LABEL] == 0)*1.0
-            #data_ice['LOW_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 1)*1.0
-            #data_ice['MID_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 2)*1.0
-            #data_ice['HIGH_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 3)*1.0
-            #data_ice['ACCE'] = (cycle_data[netco.PREDICTION_LABEL] == 4)*1.0
-            #data_ice['DECE'] = (cycle_data[netco.PREDICTION_LABEL] == 5)*1.0
+            data_ice['DEAD_STOP'] = (cycle_data[netco.PREDICTION_LABEL] == 0)*1.0
+            data_ice['LOW_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 1)*1.0
+            data_ice['MID_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 2)*1.0
+            data_ice['HIGH_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 3)*1.0
+            data_ice['ACCE'] = (cycle_data[netco.PREDICTION_LABEL] == 4)*1.0
+            data_ice['DECE'] = (cycle_data[netco.PREDICTION_LABEL] == 5)*1.0
             #data_ice = data_ice.head(1722)
-            
-            #data_ice = pd.concat([data_ice, data_ice[30:180],data_ice[30:180],data_ice[30:180],data_ice[30:180]])
-            #data_ice = data_ice.reset_index(drop=True)
-            #data_ice.to_csv(os.path.join(self.networks_ice[cycle].version_path,'data_ice.csv'),index=False)
-            #data_ice.plot()
+
+            data_ice = data_ice.reset_index(drop=True)
+            data_ice.to_csv(os.path.join(self.networks_ice[cycle].version_path,'data_ice.csv'),index=False)
+            data_ice.plot()
             #plt.show()
             
             data_emot = pd.read_csv(os.path.join(os.getcwd(),netco.SIMULATIONS,"simulation_"+str(cycle+1)+".csv"))#,usecols=netco.EMOT_FEATURES)
@@ -726,14 +725,14 @@ class trainToplevelControlGUI(tk.Toplevel):
             #data_emot = data_emot.shift(periods=9, fill_value=0)
             #data_emot = pd.concat([data_emot, data_emot.tail(9)])
             #data_emot = data_emot.reset_index(drop=True)
-            #data_emot['DEAD_STOP'] = (cycle_data[netco.PREDICTION_LABEL] == 0)*1.0
-            #data_emot['LOW_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 1)*1.0
-            #data_emot['MID_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 2)*1.0
-            #data_emot['HIGH_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 3)*1.0
-            #data_emot['ACCE'] = (cycle_data[netco.PREDICTION_LABEL] == 4)*1.0
-            #data_emot['DECE'] = (cycle_data[netco.PREDICTION_LABEL] == 5)*1.0
+            data_emot['DEAD_STOP'] = (cycle_data[netco.PREDICTION_LABEL] == 0)*1.0
+            data_emot['LOW_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 1)*1.0
+            data_emot['MID_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 2)*1.0
+            data_emot['HIGH_SPEED'] = (cycle_data[netco.PREDICTION_LABEL] == 3)*1.0
+            data_emot['ACCE'] = (cycle_data[netco.PREDICTION_LABEL] == 4)*1.0
+            data_emot['DECE'] = (cycle_data[netco.PREDICTION_LABEL] == 5)*1.0
             #data_emot = data_emot.head(1722)
-            #data_emot.to_csv(os.path.join(self.networks_emot[cycle].version_path,'data_emot.csv'),index=False)
+            data_emot.to_csv(os.path.join(self.networks_emot[cycle].version_path,'data_emot.csv'),index=False)
             
             self.networks_ice[cycle].train(data_ice,epochs,learning_rate,mini_batch,shuffle,test_size,netco.ENG_OUTPUTS)
             
@@ -799,7 +798,7 @@ class inferenceToplevelControlGUI(tk.Toplevel):
         
         load_inference_button = tk.Button(self,text="Inference",command=lambda:self.load_trained_network(sample_file.get(),int(times.get())))
         '''
-        load_inference_button = tk.Button(self,text="Inference",command=lambda:self.load_trained_network(sample_file.get()))
+        load_inference_button = tk.Button(self,text="Inference",command=lambda:self.load_trained_network(sample_file.get()),height = 2, width = 20)
         load_inference_button['bg'] = self.parent.parent.theme.bg
         load_inference_button['fg'] = self.parent.parent.theme.fg
         load_inference_button.place(x=111,y=100)

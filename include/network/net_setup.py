@@ -13,6 +13,7 @@ import pandas as pd
 import tensorflow as tf
 
 from ..utils import EPS,windowUnits
+import include.network.net_constants as netco
 
 def labelMaker(data, nb_classes):
     """Convert an iterable of indices to one-hot encoded labels."""
@@ -37,13 +38,13 @@ def network_cost_function(final_layer, Y, loss):
     Returns:
     cost - Tensor of the cost function
     """
-    if loss == 'softmax_cross_entropy' or loss=='SCE':
+    if loss == netco.SOFTMAX_CROSS_ENTROPY or loss=='SCE':
         logits = tf.transpose(final_layer)
         labels = tf.transpose(Y)
         cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=labels))
-    elif loss == 'reduce_mean_square' or loss=='RMSE':
+    elif loss == netco.REDUCED_MEAN_SQR_ERROR or loss=='RMSE':
         cost = tf.reduce_mean(tf.square(final_layer - Y))
-    elif loss == 'mean_squared_error' or loss=='MSE':
+    elif loss == netco.MEAN_SQR_ERROR or loss=='MSE':
         cost = tf.losses.mean_squared_error(Y,final_layer)
     
     return cost

@@ -30,11 +30,10 @@ SIMULATIONS = 'Simulations'
 '''Common tags used for different Networks.
 
 '''
-TEST_FEATURES = ['Tice','Tel','SOC','Vship']
 NN_CYCLES = "NN_PAC"
-#CYCLES_FEATURES = ['LABEL','N_MAX','A_MAX','A_AVE','A_STD','D_MAX','D_AVE','P_N_030','P_N_3050','P_N_5080','P_N_80100','N_AVE']#,'P_D_12','P_D_23']
-CYCLES_FEATURES = ['LABEL','N_MAX','N_AVE','A_MAX','A_AVE','A_STD','D_MAX','D_AVE','P_N_030','P_N_3050','P_N_5070','P_N_70100']
-CYCLES_FEATURES_INF = ['N_MAX','N_AVE','A_MAX','A_AVE','A_STD','D_MAX','D_AVE','P_N_030','P_N_3050','P_N_5070','P_N_70100']
+CYCLES_FEATURES = ['LABEL','N_MAX','N_AVE','A_MAX','A_AVE','A_STD','D_MAX','D_AVE','P_N_030','P_N_3050','P_N_5070','P_N_70100','P_D_1','P_D_2','P_A_1','P_A_2']
+#CYCLES_FEATURES = ['LABEL','N_MAX','N_AVE','A_MAX','A_AVE','A_STD','D_MAX','D_AVE','P_N_030','P_N_3050','P_N_5070','P_N_70100']
+CYCLES_FEATURES_INF = ['N_MAX','N_AVE','A_MAX','A_AVE','A_STD','D_MAX','D_AVE','P_N_030','P_N_3050','P_N_5070','P_N_70100','P_D_1','P_D_2','P_A_1','P_A_2']
 CYCLES_OUTPUTS = 6
 
 NN_TREND ="NN_CRT"
@@ -44,13 +43,13 @@ TREND_FEATURES_INF = ['N_MAX','N_MIN','N_AVE','N_IN','N_OUT','A_AVE']
 TREND_OUTPUTS = 6
 
 NN_EMOT = "NN_MOT"
-#EMOT_FEATURES = ['TQ_LOAD','V_SHIP','N_ERROR','SOC','DEAD_STOP','LOW_SPEED','MID_SPEED','HIGH_SPEED','ACCE','DECE']
-EMOT_FEATURES = ['TQ_EMOT','TQ_LOAD','V_SHIP','N_ERROR','SOC']
+EMOT_FEATURES = ['TQ_LOAD','V_SHIP','N_ERROR','SOC','DEAD_STOP','LOW_SPEED','MID_SPEED','HIGH_SPEED','ACCE','DECE']
+#EMOT_FEATURES = ['TQ_EMOT','TQ_LOAD','V_SHIP','N_ERROR','SOC']
 EMOT_OUTPUTS = 1
 
 NN_ENG = "NN_ENG"
-ENG_FEATURES = ['TQ_ICE','TQ_LOAD','V_SHIP','N_ERROR','SOC']
-#ENG_FEATURES = ['TQ_LOAD','V_SHIP','N_ERROR','SOC','DEAD_STOP','LOW_SPEED','MID_SPEED','HIGH_SPEED','ACCE','DECE']
+#ENG_FEATURES = ['TQ_ICE','TQ_LOAD','V_SHIP','N_ERROR','SOC']
+ENG_FEATURES = ['TQ_LOAD','V_SHIP','N_ERROR','SOC','DEAD_STOP','LOW_SPEED','MID_SPEED','HIGH_SPEED','ACCE','DECE']
 ENG_OUTPUTS = 1
 
 '''Common activation functions used for different Networks.
@@ -60,3 +59,11 @@ LINEAR = "Linear"
 TANH = "Tanh"
 RELU = "Relu"
 SIGMOID = "Sigmoid"
+
+'''Common loss functions used for different Networks.
+
+'''
+SOFTMAX_CROSS_ENTROPY = 'softmax_cross_entropy'
+MEAN_SQR_ERROR = 'mean_squared_error'
+MEAN_ABS_ERROR = 'mean_absolute_error'
+REDUCED_MEAN_SQR_ERROR = 'reduce_mean_square' 
