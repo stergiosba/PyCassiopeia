@@ -3,9 +3,13 @@
 # Cassiopeia Project
 
 This is a Machine Learning Project
-Latest Version: Asterion
+Latest Version: Asterion v1.0
+
+PROJECT IS MIGRATING TO C++/Python
 
 ## Installation
+
+This is for Asterion Version which will stay pure python and will be transfered to a different project in the future.
 
 After you clone the latest version which should be master follow these instuctions:
 
@@ -26,19 +30,18 @@ conda env create -f cassiopeia_gpu.yaml
 ```sequence
 participant cNN_DT
 participant cNN_EC
-participant rNN_WENG
+participant rNN_ENG
 participant ECU
 cNN_DT->rNN_WENG: Trend Prediction
 cNN_EC->rNN_WENG: Cycle Prediction
-rNN_WENG->ECU: Control Signal
+rNN_ENG->ECU: Control Signal
 Note left of cNN_DT: Driving Trend\nNeural Network
 Note left of cNN_EC: Engine Cycle\nNeural Network
-Note left of rNN_WENG: Controller\nNeural Network
+Note left of rNN_ENG: Controller\nNeural Network
 Note left of ECU: Engine\nControl Unit
 ```
 
 ## Acknowledgments
 
-* Hat tip to anyone whose code was used
-* Inspiration
-* etc
+* Tensorflow/Pandas/Numpy
+* Code for my Master Diploma Thesis
