@@ -23,10 +23,25 @@ def labelMaker(data, nb_classes):
 # n_x = num__input_features
 # n_y = expected output (num classes)
 def create_placeholders(n_x=None, n_y=None):
-    X1 = tf.compat.v1.placeholder(tf.float32, [n_x, None], name="X")
-    Y1 = tf.compat.v1.placeholder(tf.float32, [n_y, None], name="Y")
+    X1 = tf.placeholder(tf.float32, [n_x, None], name="X")
+    Y1 = tf.placeholder(tf.float32, [n_y, None], name="Y")
     return X1, Y1
 
+def SOFTMAX_CROSS_ENTROPY(final_layer,Y):
+    """
+    Computes the softmax cross entropy cost.
+    """
+    logits = tf.transpose(final_layer)
+    labels = tf.transpose(Y)
+    return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
+
+SCE=SOFTMAX_CROSS_ENTROPY
+
+def MEAN_SQR_ERROR(final_layer,Y):
+    return tf.losses.mean_squared_error(final_layer,Y)
+
+MSE = MEAN_SQR_ERROR
+'''
 def network_cost_function(final_layer, Y, loss):
     """
     Computes the cost in softmax cross entropy or RMSE or MSE fashion
@@ -48,7 +63,16 @@ def network_cost_function(final_layer, Y, loss):
         cost = tf.losses.mean_squared_error(Y,final_layer)
     
     return cost
-    
+'''
+
+def init_Weight(shape,name):
+    initializer = tf.initializers.glorot_uniform()
+    return tf.Variable(initializer(shape),name=name,trainable=True, dtype=tf.float32)
+
+def init_Bias(shape,name):
+    initializer = tf.initializers.zeros()
+    return tf.Variable(initializer(shape),name=name,trainable=True, dtype=tf.float32)
+
 def random_mini_batches(X, Y, mini_batch_size = 64, seed = 0):
     """
     Creates a list of random minibatches from (X, Y)
