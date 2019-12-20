@@ -19,10 +19,14 @@ def labelMaker(data, nb_classes):
     """Convert an iterable of indices to one-hot encoded labels."""
     targets = np.array(data).reshape(-1)
     return np.eye(nb_classes)[targets]
-        
+
+#DEPRECATED
 # n_x = num__input_features
 # n_y = expected output (num classes)
 def create_placeholders(n_x=None, n_y=None):
+    '''
+    DEPRECATED dont use placeholders.TF 2 MIGRATE
+    '''
     X1 = tf.placeholder(tf.float32, [n_x, None], name="X")
     Y1 = tf.placeholder(tf.float32, [n_y, None], name="Y")
     return X1, Y1

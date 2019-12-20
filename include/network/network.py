@@ -91,10 +91,10 @@ class Network():
 
     def train_step(self,I,O):
         with tf.GradientTape as tape:
-            current_loss = self.loss(I,O)
-            grads = tape.gradient( current_loss , weights )
-            self.optimizer.apply_gradients( zip( grads , weights ) )
-            print( tf.reduce_mean( current_loss ) )
+            current_loss = self.loss(I, O)
+            grads = tape.gradient(current_loss, weights)
+            self.optimizer.apply_gradients(zip(grads, weights))
+            print(tf.reduce_mean(current_loss))
 
     
     def train(self,data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs):
@@ -115,19 +115,26 @@ class Network():
         X_data = X_data.astype('float32')
         if self.edition == netco.TREND or self.edition == netco.CYCLES:
             X_data = X_data.astype({'LABEL': int})
+        Y_data = X_data.pop('LABEL')
+        X_train, X_test = train_test_split(X_data, test_size=test_size)
+        Y_train, Y_test = train_test_split(Y_data, test_size=test_size)
+        DATASET_TRAIN = tf.data.Dataset.from_tensor_slices((X_train.values, Y_train.values))
+        DATASET_TEST = tf.data.Dataset.from_tensor_slices((X_test.values, Y_test.values))
+        
         if shuffle=='True':
             shuffle = True
+            DATASET_TRAIN = DATASET_TRAIN.shuffle(1024).batch(minibatch_size)
             print(self.cli_name+" Splitting Dataset with size "+str(test_size)+". Shuffling: Enabled!")
         else:
             shuffle = False
+            DATASET_TRAIN = DATASET_TRAIN.batch(minibatch_size)
             print(self.cli_name+" Splitting Dataset with size "+str(test_size)+". Shuffling: Disabled!")
-
-        X_train, X_test = train_test_split(X_data, test_size=test_size, shuffle=shuffle)
-        X_train = X_train.reset_index(drop=True)
-        X_test = X_test.reset_index(drop=True)
-        self.train_df = X_train
-        self.test_df = X_test
-
+        
+        #X_train = X_train.reset_index(drop=True)
+        #X_test = X_test.reset_index(drop=True)
+        #self.train_df = X_train
+        #self.test_df = X_test
+        '''
         if self.edition == netco.TREND:
             Y_train = nets.labelMaker(X_train[['LABEL']],outputs).transpose()
             Y_test = nets.labelMaker(X_test[['LABEL']],outputs).transpose()
@@ -140,9 +147,10 @@ class Network():
         else:
             Y_train = X_train[['LABEL']].values.transpose()
             Y_test = X_test[['LABEL']].values.transpose()
+        '''
         # [Plotting Train and Test Data at the stage of training]
-        X_train = X_train.drop(["LABEL"],axis=1)
-        X_test = X_test.drop(["LABEL"],axis=1)
+        #X_train = X_train.drop(["LABEL"],axis=1)
+        #X_test = X_test.drop(["LABEL"],axis=1)
         X_train = X_train.values.transpose()
         X_test = X_test.values.transpose()
         
@@ -156,10 +164,17 @@ class Network():
         self.accuracy_train = []
         self.accuracy_test = []
         self.init_layers()
-            
+        
         # [Add Forward Propogation to the graph]
         final = tf.identity(self.forward_propagation(X_train),name="Final")
-        print(pd.DataFrame(self.Weights['W1'].numpy()))
+        final = final.numpy()
+        print(final)
+        with tqdm(total=num_minibatches,desc = "Progress:  ",unit="mini") as minibar:
+            for epoch in range(epochs):
+                pass
+            
+
+
         #print(final.numpy())
         print("EDW")
         '''
