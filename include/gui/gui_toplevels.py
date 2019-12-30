@@ -744,7 +744,7 @@ class trainToplevelControlGUI(tk.Toplevel):
             
             self.networks_ice[cycle].train(data_ice,epochs,learning_rate,mini_batch,shuffle,test_size,netco.ENG_OUTPUTS)
             
-            self.networks_emot[cycle].train(data_emot,epochs,learning_rate,mini_batch,shuffle,test_size,netco.EMOT_OUTPUTS)
+            #self.networks_emot[cycle].train(data_emot,epochs,learning_rate,mini_batch,shuffle,test_size,netco.EMOT_OUTPUTS)
         
             
 

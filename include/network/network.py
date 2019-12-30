@@ -143,7 +143,7 @@ class Network(tf.keras.Sequential):
         self.compile()
 
     def call(self,X):
-        X = getattr(self,netco.FLATTEN)(X)
+        #X = getattr(self,netco.FLATTEN)(X)
         for level_counter,_ in enumerate(self.structure,start=0):
             X = getattr(self,netco.LAYER+str(level_counter))(X)
         return X
@@ -161,7 +161,6 @@ class Network(tf.keras.Sequential):
     @tf.function
     def test_step(self, samples, labels):
         t_loss = self.loss_fun(labels, self(samples))
-        
         self.test_loss(t_loss)
         #self.test_accuracy(labels, self(samples))
 
@@ -187,10 +186,12 @@ class Network(tf.keras.Sequential):
         print(X_train)
         Y_train = X_train.pop('LABEL')
         Y_test = X_test.pop('LABEL')
-
+        self.test_df = Y_test
+        print(self.test_df)
         DATASET_TRAIN = tf.data.Dataset.from_tensor_slices((X_train.values, Y_train.values))
         DATASET_TEST = tf.data.Dataset.from_tensor_slices((X_test.values, Y_test.values))
         DATASET_TEST = DATASET_TEST.batch(minibatch_size)
+        
         if shuffle=='True':
             #DATASET_TRAIN = DATASET_TRAIN.shuffle(len(X_train)-1).batch(minibatch_size)
             DATASET_TRAIN = DATASET_TRAIN.shuffle(1024).batch(minibatch_size)
@@ -199,12 +200,19 @@ class Network(tf.keras.Sequential):
             DATASET_TRAIN = DATASET_TRAIN.batch(minibatch_size)
             print(f"{self.cli_name} Splitting Dataset with size {test_size}. Shuffling: Disabled!")
         
-        tf.random.set_seed(1)
+        tf.random.set_seed(31)
         seed = 3
+        '''
         self.network_metrics = pd.DataFrame(
             columns=[
                 netco.TRAIN_LOSS,netco.TRAIN_ACC,
                 netco.TEST_LOSS,netco.TEST_ACC
+                ])
+        '''
+        self.network_metrics = pd.DataFrame(
+            columns=[
+                netco.TRAIN_LOSS,
+                netco.TEST_LOSS
                 ])
         self.construct()
         begin = time.time()
@@ -227,6 +235,7 @@ class Network(tf.keras.Sequential):
                 test_epo_cost = round(self.test_loss.result().numpy(),6)
                 #test_epo_acc = round(self.test_accuracy.result().numpy(),6)*100
                 #self.network_metrics.loc[epoch] = [train_epo_cost, train_epo_acc, test_epo_cost, test_epo_acc]
+                self.network_metrics.loc[epoch] = [train_epo_cost, test_epo_cost]
                 pbar.set_description(f"~$> Loss: {train_epo_cost:.3f}, Test Loss: {test_epo_cost:.3f}")
                 pbar.refresh() # to show immediately the update
                 pbar.update(n=1)
@@ -245,6 +254,7 @@ class Network(tf.keras.Sequential):
             numpy_trainable_variables[var_name] = var.numpy()
         finish = time.time()
         self.training_time = round(finish-begin,4)
+        self.test_predictions = self.predict(DATASET_TEST).flatten()
         self.network_training_summary_report(numpy_trainable_variables)
 
     def normalize(self,data):
@@ -281,8 +291,8 @@ class Network(tf.keras.Sequential):
                 f'Epochs: {self.epochs}',
                 f'Learning Rate: {self.learning_rate}',
                 f'Minibatch Size: {self.minibatch_size}',
-                f'Training Accuracy: {self.network_metrics[netco.TRAIN_ACC].loc[self.epochs-1]} %',
-                f'Testing Accuracy: {self.network_metrics[netco.TEST_ACC].loc[self.epochs-1]} %',
+                #f'Training Accuracy: {self.network_metrics[netco.TRAIN_ACC].loc[self.epochs-1]} %',
+                #f'Testing Accuracy: {self.network_metrics[netco.TEST_ACC].loc[self.epochs-1]} %',
                 f'Training Time: {self.training_time} seconds',
                 f'',
                 f'[PATHS]',
@@ -501,31 +511,32 @@ class NNRegressor(Network):
         cycle = str(int(cycle)+1)
         
         super().train(data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs)
+
         self.plot_trained(cycle)
         self.plot_costs(cycle)
         self.plot_predictions(cycle)
-        plt.close('all')
+        #plt.close('all')
         
-        #plt.show()
+        plt.show()
 
     def plot_trained(self,cycle):
         fig, ax = plt.subplots()
-        t = np.arange(0.0, len(self.labels), 1)
-        ax.plot(t, self.labels, label='NMPC',color='blue')
-        ax.plot(t, self.ordered_predictions, label='NN',color='red')
+        t = np.arange(0.0, len(self.test_df), 1)
+        ax.plot(t, self.test_df, label='NMPC',color='blue')
+        ax.plot(t, self.test_predictions, label='NN',color='red')
         ax.set(xlabel='Time [Secs]', ylabel='Torque [Nm]',title=self.edition+' Torque (Cycle '+cycle+')')
         ax.grid()
         plt.legend()
-        fig.savefig(self.build_path+'/trained_model_cycle_'+cycle+'.png',dpi=800)
+        #fig.savefig(self.build_path+'/trained_model_cycle_'+cycle+'.png',dpi=800)
         frame = pd.DataFrame()
-        frame['LABEL'] = self.labels
-        frame['PREDICTION'] = self.ordered_predictions
+        frame['LABEL'] = self.test_df
+        frame['PREDICTION'] = self.test_predictions
         frame.to_csv(os.path.join(self.build_path,'results_'+self.edition+'_'+cycle+'.csv'),index=False)
 
 
     def plot_predictions(self,cycle):
         fig, ax = plt.subplots()
-        ax.scatter(self.test_df['LABEL'], self.predictions_test,color='red')
+        ax.scatter(self.test_df, self.test_predictions,color='red')
         ax.set(xlabel='True Values [Torque]', ylabel='Predictions [Torque]',title=self.edition+' Predictions (Cycle '+cycle+')')
         ax.axis('equal')
         ax.axis('square')
@@ -539,18 +550,18 @@ class NNRegressor(Network):
             plt.ylim([-plt.ylim()[1],plt.ylim()[1]])
         _ = plt.plot([-2000, 2000], [-2000, 2000])
         
-        fig.savefig(self.build_path+'/predictions_cycle_'+cycle+'.png',dpi=800)
+        #fig.savefig(self.build_path+'/predictions_cycle_'+cycle+'.png',dpi=800)
 
     def plot_costs(self,cycle):
         '''Timeplots of costs'''
         t = np.arange(0.0, self.epochs, 1)
         fig, ax = plt.subplots()
-        ax.plot(t, self.costs_train, label='Train Error')
-        ax.plot(t, self.costs_test, label='Test Error')
+        ax.plot(t, self.network_metrics[netco.TRAIN_LOSS], label='Train Error')
+        ax.plot(t, self.network_metrics[netco.TEST_LOSS], label='Test Error')
         ax.set(xlabel='Epochs', ylabel='Mean Absolute Error (Torque)',title=self.edition+' Training and Testing Errors (Cycle '+cycle+')')
         ax.grid()
         plt.legend()
-        fig.savefig(self.build_path+'/costs_cycle_'+cycle+'.png',dpi=800)
+        #fig.savefig(self.build_path+'/costs_cycle_'+cycle+'.png',dpi=800)
 
         
 
