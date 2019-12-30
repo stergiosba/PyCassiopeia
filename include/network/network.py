@@ -105,8 +105,7 @@ class Network(tf.keras.Sequential):
             if activation_function == netco.LINEAR:
                 # [LINEAR layer]
                 layer = tf.keras.layers.Dense(int(level[0]),
-                activation=None,
-                kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+                kernel_regularizer=tf.keras.regularizers.l2(l=0),
                 name=netco.LINEAR+'_'+str(level_counter))
             elif activation_function == netco.TANH:
                 # [TANH layer]
@@ -135,19 +134,13 @@ class Network(tf.keras.Sequential):
             setattr(self,netco.LAYER+str(level_counter),layer)
             #if layer_counter!=len(self.structure)-1:
             #    self.add(tf.keras.layers.Dropout(0.2))
-        #self.compile(optimizer='adam', loss=tf.keras.losses.hinge, metrics=['accuracy'])
-        self.compile()
-        #self.loss = nets.SOFTMAX_CROSS_ENTROPY
-        self.loss = tf.keras.losses.SparseCategoricalCrossentropy()
+
         self.optimizer = tf.optimizers.Adam(
-                learning_rate=0.001,beta_1=0.9,
-                beta_2=0.999,
-                epsilon=1e-07,
-            )
-        self.train_loss = tf.keras.metrics.Mean(name='train_loss')
-        self.train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
-        self.test_loss = tf.keras.metrics.Mean(name='test_loss')
-        self.test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
+            learning_rate=self.learning_rate,beta_1=0.9,
+            beta_2=0.999,
+            epsilon=1e-07,
+        )
+        self.compile()
 
     def call(self,X):
         X = getattr(self,netco.FLATTEN)(X)
@@ -158,19 +151,19 @@ class Network(tf.keras.Sequential):
     @tf.function
     def train_step(self, samples,labels):
         with tf.GradientTape() as tape:
-            current_loss = self.loss(labels, self(samples))
+            current_loss = self.loss_fun(labels, self(samples))
             grads = tape.gradient(current_loss, self.trainable_variables)
             self.optimizer.apply_gradients(zip(grads, self.trainable_variables))
         
         self.train_loss(current_loss)
-        self.train_accuracy(labels, self(samples))
+        #self.train_accuracy(labels, self(samples))
 
     @tf.function
     def test_step(self, samples, labels):
-        t_loss = self.loss(labels, self(samples))
+        t_loss = self.loss_fun(labels, self(samples))
         
         self.test_loss(t_loss)
-        self.test_accuracy(labels, self(samples))
+        #self.test_accuracy(labels, self(samples))
 
     def train(self,data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs):
         '''Network train function. \n
@@ -191,17 +184,10 @@ class Network(tf.keras.Sequential):
             X_data = X_data.astype({'LABEL': int})
 
         X_train, X_test = train_test_split(X_data, test_size=test_size)
+        print(X_train)
         Y_train = X_train.pop('LABEL')
         Y_test = X_test.pop('LABEL')
-        '''
-        if self.edition == netco.TREND or self.edition == netco.CYCLES:
-            Y_train = nets.labelMaker(Y_train,outputs)
-            Y_test = nets.labelMaker(Y_test,outputs)
-        
-        else:
-            Y_train = Y_train
-            Y_test = Y_test
-        '''
+
         DATASET_TRAIN = tf.data.Dataset.from_tensor_slices((X_train.values, Y_train.values))
         DATASET_TEST = tf.data.Dataset.from_tensor_slices((X_test.values, Y_test.values))
         DATASET_TEST = DATASET_TEST.batch(minibatch_size)
@@ -226,9 +212,9 @@ class Network(tf.keras.Sequential):
         with tqdm(total = epochs, unit="epo") as pbar:
             for epoch in range(epochs):
                 self.train_loss.reset_states()
-                self.train_accuracy.reset_states()
+                #self.train_accuracy.reset_states()
                 self.test_loss.reset_states()
-                self.test_accuracy.reset_states()
+                #self.test_accuracy.reset_states()
 
                 for samples,labels in DATASET_TRAIN:
                     self.train_step(samples,labels)
@@ -237,22 +223,29 @@ class Network(tf.keras.Sequential):
                     self.test_step(test_samples, test_labels)
 
                 train_epo_cost = round(self.train_loss.result().numpy(),6)
-                train_epo_acc = round(self.train_accuracy.result().numpy(),6)*100
+                #train_epo_acc = round(self.train_accuracy.result().numpy(),6)*100
                 test_epo_cost = round(self.test_loss.result().numpy(),6)
-                test_epo_acc = round(self.test_accuracy.result().numpy(),6)*100
-                self.network_metrics.loc[epoch] = [train_epo_cost, train_epo_acc, test_epo_cost, test_epo_acc]
-                pbar.set_description(f"Loss: {train_epo_cost:.3f}, Test Loss: {test_epo_cost:.3f}")
+                #test_epo_acc = round(self.test_accuracy.result().numpy(),6)*100
+                #self.network_metrics.loc[epoch] = [train_epo_cost, train_epo_acc, test_epo_cost, test_epo_acc]
+                pbar.set_description(f"~$> Loss: {train_epo_cost:.3f}, Test Loss: {test_epo_cost:.3f}")
                 pbar.refresh() # to show immediately the update
                 pbar.update(n=1)
                 if epoch % 50 == 0:
                     print('')
         print(self.network_metrics)
-        self.numpy_trainable_variables = {}
+
+        numpy_trainable_variables = {}
         for var in self.trainable_variables:
-            self.numpy_trainable_variables[var.name] = var.numpy()
+            var_type = var.name.split('/')[2].split(':')[0]
+            layer = var.name.split('/')[1].split('_')[1]
+            if var_type == 'kernel':
+                var_name = 'W'+layer
+            elif var_type == 'bias':
+                var_name = 'b'+layer
+            numpy_trainable_variables[var_name] = var.numpy()
         finish = time.time()
         self.training_time = round(finish-begin,4)
-        self.network_training_summary_report()
+        self.network_training_summary_report(numpy_trainable_variables)
 
     def normalize(self,data):
         '''Normalize data and save normalizers for later inference'''
@@ -271,10 +264,10 @@ class Network(tf.keras.Sequential):
                     final_df[column] = data[column].apply(lambda x: (x-normalizers.loc[column].min())/(normalizers.loc[column].max()-normalizers.loc[column].min()))
         return final_df
 
-    def network_training_summary_report(self):
+    def network_training_summary_report(self,numpy_trainable_variables):
         '''Save a training summary report for the trained network'''
         settings_file = self.cass_name+".training_summary.txt"
-        layers_matlab_file = self.cass_name+".layers.mat"
+        layers_matlab_file = self.cass_name+".mat"
         exit_path = os.path.join(self.build_path,settings_file)
         layers_path = os.path.join(self.build_path,layers_matlab_file)
         lines = [
@@ -301,26 +294,21 @@ class Network(tf.keras.Sequential):
             for line in lines:
                 file.write(line+'\n')
         print(f"{self.cli_name} Exporting Information File to {self.build_path}")
-        scipy.io.savemat(layers_path, self.numpy_trainable_variables)
+        scipy.io.savemat(layers_path, numpy_trainable_variables)
 
 class NNClassifier(Network):
     def __init__(self,edition,flag,base_name,root_path,features):
         Network.__init__(self,edition,flag,base_name,root_path,features)
         
     def get_general(self):
-        #self.loss = netco.SOFTMAX_CROSS_ENTROPY
-        #self.output_function = tf.argmax
-        self.optimizer = tf.optimizers.Adam(
-                learning_rate=0.001,beta_1=0.9,
-                beta_2=0.999,
-                epsilon=1e-07,
-            )
-        #self.train_loss = tf.keras.metrics.Mean(name='train_loss')
-        #self.train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
-            
+        self.loss_fun = tf.keras.losses.SparseCategoricalCrossentropy()
+        self.train_loss = tf.keras.metrics.Mean(name='train_loss')
+        self.train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
+        self.test_loss = tf.keras.metrics.Mean(name='test_loss')
+        self.test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')            
 
     def train(self,data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs):
-        #self.get_general()
+        self.get_general()
         super().train(data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs)
         self.plot_accuracy()
         self.plot_costs()
@@ -495,21 +483,19 @@ class NNClassifier(Network):
 class NNRegressor(Network):
     def __init__(self,edition,flag,base_name,root_path,features):
         Network.__init__(self,edition,flag,base_name,root_path,features)
-        self.get_general()
         
     def get_general(self):
-        self.loss = netco.MEAN_SQR_ERROR
-        #self.output_function = tf.identity
-        self.optimizer = tf.optimizers.Adam(
-                learning_rate=0.001,beta_1=0.9,
-                beta_2=0.999,
-                epsilon=1e-07,
-            )
+        self.loss_fun = tf.keras.losses.MeanSquaredError()
         self.train_loss = tf.keras.metrics.Mean(name='train_loss')
-        self.train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
+        #self.train_loss = tf.keras.metrics.MeanSquaredError(name='train_loss')
+        #self.train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
+        self.test_loss = tf.keras.metrics.Mean(name='test_loss')
+        #self.test_loss = tf.keras.metrics.MeanSquaredError(name='test_loss')
+        #self.test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')   
 
 
     def train(self,data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs):
+        self.get_general()
         cycle_full = self.root_path.split('/')[-1]
         cycle = cycle_full.split('_')[-1]
         cycle = str(int(cycle)+1)
