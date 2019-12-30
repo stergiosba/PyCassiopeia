@@ -10,10 +10,9 @@ import matplotlib.pyplot as plt
 from include.network import network
 import include.network.net_constants as netco
 import include.network.net_setup as nets
-from include.processes import trendProcess, cycleProcess
+from include.processes import trendProcess, patternProcess
 
 def trend_windows_execute(window_size,window_step):
-    measurements = ['RE_HMI_ECUA_020115']#"PR_air_scav","RE_gov_idx_meas"]
     features_list = netco.TREND_FEATURES
     if window_step<=window_size:
         model_path = os.path.join(os.getcwd(),netco.CLASSIFIERS,netco.TREND,"model_"+str(window_size)+"_"+str(window_step))
@@ -24,7 +23,7 @@ def trend_windows_execute(window_size,window_step):
             data_path = os.path.join(os.getcwd(),"data")
             data_path = os.getcwd()
             window_settings = [window_size,window_step]
-            trendProcess(data_path,model_path,features_list,measurements,window_settings)
+            trendProcess(data_path,model_path,features_list,window_settings)
         else:
             print("~$> The Model already exists.")
             fit_df = pd.read_csv(os.path.join(model_path,"train.csv"),usecols=features_list,engine='python')
@@ -43,7 +42,7 @@ def cycles_windows_execute(window_size,window_step):
             print("~$> Model Window Step:",window_step)
             data_path = os.getcwd()
             window_settings = [window_size,window_step]
-            cycleProcess(data_path,model_path,features_list,window_settings)
+            patternProcess(data_path,model_path,features_list,window_settings)
         else:
             print("~$> The Model already exists.")
             fit_df = pd.read_csv(os.path.join(model_path,"train.csv"),usecols=features_list,engine='python')

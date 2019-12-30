@@ -93,7 +93,7 @@ class creationToplevelClassificationGUI(tk.Toplevel):
             outEntry.grid(row=5+i,column=1)
 
             activationEntry = ttk.Combobox(self,state="readonly")
-            activationEntry['values'] = (netco.TANH,netco.LINEAR,netco.SIGMOID,netco.RELU)
+            activationEntry['values'] = (netco.TANH,netco.LINEAR,netco.SIGMOID,netco.RELU,netco.SOFTMAX)
             activationEntry.current(0)
             activationEntry.grid(row=5+i,column=2)
             self.activationValues.append(activationEntry)
@@ -228,6 +228,8 @@ class trainToplevelClassificationGUI(tk.Toplevel):
         test_size.place(x=x_list_place,y=140)
 
         train_button = tk.Button(self,text="Train",command=lambda:self.training(int(epochs.get()),float(learning_rate.get()),int(mini_batch.get()),shuffle.get(),float(test_size.get())),height = 2, width = 20)
+        #train_button = tk.Button(self,text="Train",command=lambda:self.construct(),height = 2, width = 20)
+        
         train_button['bg'] = self.parent.parent.theme.bg
         train_button['fg'] = self.parent.parent.theme.fg
         train_button.place(x=x_list_place,y=180)
@@ -248,12 +250,15 @@ class trainToplevelClassificationGUI(tk.Toplevel):
         self.configure(bg="#000000")
         self.configure(bg=self.parent.parent.theme.fg)
 
+    def construct(self):
+        self.network.construct()
+
     def training(self,epochs,learning_rate,mini_batch,shuffle,test_size):
         if self.parent.network_edition.get() == netco.CYCLES:
-            data = pd.read_csv(os.path.join(self.network.root_path,netco.TRAINING+".csv"),usecols=netco.CYCLES_FEATURES)
+            data = pd.read_csv(os.path.join(self.network.root_path,netco.TRAIN+".csv"),usecols=netco.CYCLES_FEATURES)
             self.network.train(data,epochs,learning_rate,mini_batch,shuffle,test_size,netco.CYCLES_OUTPUTS)
         if self.parent.network_edition.get() == netco.TREND:
-            data = pd.read_csv(os.path.join(self.network.root_path,netco.TRAINING+".csv"),usecols=netco.TREND_FEATURES)
+            data = pd.read_csv(os.path.join(self.network.root_path,netco.TRAIN+".csv"),usecols=netco.TREND_FEATURES)
             self.network.train(data,epochs,learning_rate,mini_batch,shuffle,test_size,netco.TREND_OUTPUTS)
             
     def callback_network(self):
@@ -394,7 +399,7 @@ class creationToplevelControlGUI(tk.Toplevel):
             outEntry.grid(row=5+i,column=1)
 
             activationEntry = ttk.Combobox(frame,state="readonly")
-            activationEntry['values'] = (netco.TANH,netco.LINEAR,netco.SIGMOID,netco.RELU)
+            activationEntry['values'] = (netco.TANH,netco.LINEAR,netco.SIGMOID,netco.RELU,netco.SOFTMAX)
             activationEntry.current(0)
             activationEntry.grid(row=5+i,column=2)
             frame.activationValues.append(activationEntry)

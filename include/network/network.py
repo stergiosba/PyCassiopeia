@@ -29,26 +29,33 @@ from include.network.online import onlineData,onlineData2
 #tf.reset_default_graph()   # To clear the defined variables and operations of the previous cell
 # create grap
 
-class Network():
-    '''General Network Class
+class Network(tf.keras.Sequential):
     '''
-    def __init__(self,edition,flag,base_name,root_path,features):
+        General Network Class
+    '''
+    def __init__(self,
+                edition,
+                flag,
+                base_name,
+                root_path,
+                features):
+        super(Network, self).__init__()
         self.root_path = root_path
-        self.layers = {}
         self.edition = edition
         self.features = features
+        
         if flag==netco.CREATE:
             self.base_name = base_name
             # On new network creation we check for previous versions up to 10
             self.version_control()
-            print("~$> Creating Network: |-> "+self.name)
+            print(f"~$> Creating Network: |-> {self.cass_name}")
         elif flag==netco.LOAD:
-            self.name = base_name
-            print("~$> Loading Network: |-> "+self.name)
-            self.cli_name = "~$/"+self.name+">"
-            self.version_path = os.path.join(self.root_path,self.name)
-            self.version = self.name.split("_")[-1]
- 
+            self.cass_name = base_name
+            print(f"~$> Loading Network: |-> {self.cass_name}")
+            self.cli_name = "~$/"+self.cass_name+">"
+            self.version_path = os.path.join(self.root_path,self.cass_name)
+            self.version = self.cass_name.split("_")[-1]
+        
     def version_control(self):
         versions_dir = []
         if not os.path.exists(self.root_path): os.makedirs(self.root_path)
@@ -62,9 +69,9 @@ class Network():
         else:
             self.version = int(versions_dir[0].split("_")[-1])+1
         self.version = str(self.version)
-        self.name = self.base_name+"_"+self.version
+        self.cass_name = self.base_name+"_"+self.version
         self.cli_name = "~$/"+self.base_name+"_"+self.version+">"
-        self.version_path = self.root_path+"/"+self.name
+        self.version_path = self.root_path+"/"+self.cass_name
 
     def build_control(self):
         builds_dir = []
@@ -84,283 +91,174 @@ class Network():
         self.build_path = os.path.join(self.version_path,build_code)
 
     def layers_import(self,json_path):
-        print(self.cli_name+" Importing Network Structure from: "+json_path)
+        print(f"{self.cli_name} Importing Network Structure from: {json_path}")
         obj_text = codecs.open(json_path, 'r', encoding='utf-8').read()
         b_new = json.loads(obj_text)
         self.structure = np.array(b_new["network_structure"])#,dtype=int)
 
-    def train_step(self,I,O):
-        with tf.GradientTape as tape:
-            current_loss = self.loss(I, O)
-            grads = tape.gradient(current_loss, weights)
-            self.optimizer.apply_gradients(zip(grads, weights))
-            print(tf.reduce_mean(current_loss))
+    def construct(self):
+        for level_counter,level in enumerate(self.structure,start=0):
+            if level_counter==0:
+                flatten = tf.keras.layers.Flatten(name=netco.FLATTEN)
+                setattr(self,netco.FLATTEN,flatten)
+            activation_function = level[2]
+            if activation_function == netco.LINEAR:
+                # [LINEAR layer]
+                layer = tf.keras.layers.Dense(int(level[0]),
+                activation=None,
+                kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+                name=netco.LINEAR+'_'+str(level_counter))
+            elif activation_function == netco.TANH:
+                # [TANH layer]
+                layer =tf.keras.layers.Dense(int(level[0]),
+                activation=tf.nn.tanh,
+                kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+                name=netco.TANH+'_'+str(level_counter))
+            elif activation_function == netco.SIGMOID:
+                # [SIGMOID layer]
+                layer = tf.keras.layers.Dense(int(level[0]),
+                activation=tf.nn.sigmoid,
+                kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+                name=netco.SIGMOID+'_'+str(level_counter))
+            elif activation_function == netco.RELU:
+                # [RELU layer]
+                layer = tf.keras.layers.Dense(int(level[0]),
+                activation=tf.nn.relu,
+                kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+                name=netco.RELU+'_'+str(level_counter))
+            elif activation_function == netco.SOFTMAX:
+                # [SOFTMAX layer]
+                layer = tf.keras.layers.Dense(int(level[0]),
+                activation=tf.nn.softmax,
+                kernel_regularizer=tf.keras.regularizers.l2(l=0),
+                name=netco.SOFTMAX+'_'+str(level_counter))
+            setattr(self,netco.LAYER+str(level_counter),layer)
+            #if layer_counter!=len(self.structure)-1:
+            #    self.add(tf.keras.layers.Dropout(0.2))
+        #self.compile(optimizer='adam', loss=tf.keras.losses.hinge, metrics=['accuracy'])
+        self.compile()
+        #self.loss = nets.SOFTMAX_CROSS_ENTROPY
+        self.loss = tf.keras.losses.SparseCategoricalCrossentropy()
+        self.optimizer = tf.optimizers.Adam(
+                learning_rate=0.001,beta_1=0.9,
+                beta_2=0.999,
+                epsilon=1e-07,
+            )
+        self.train_loss = tf.keras.metrics.Mean(name='train_loss')
+        self.train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
+        self.test_loss = tf.keras.metrics.Mean(name='test_loss')
+        self.test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
 
+    def call(self,X):
+        X = getattr(self,netco.FLATTEN)(X)
+        for level_counter,_ in enumerate(self.structure,start=0):
+            X = getattr(self,netco.LAYER+str(level_counter))(X)
+        return X
     
+    @tf.function
+    def train_step(self, samples,labels):
+        with tf.GradientTape() as tape:
+            current_loss = self.loss(labels, self(samples))
+            grads = tape.gradient(current_loss, self.trainable_variables)
+            self.optimizer.apply_gradients(zip(grads, self.trainable_variables))
+        
+        self.train_loss(current_loss)
+        self.train_accuracy(labels, self(samples))
+
+    @tf.function
+    def test_step(self, samples, labels):
+        t_loss = self.loss(labels, self(samples))
+        
+        self.test_loss(t_loss)
+        self.test_accuracy(labels, self(samples))
+
     def train(self,data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs):
         '''Network train function. \n
         |-> Arguments(data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs)
         '''
-        self.function = netco.TRAINING
+        self.function = netco.TRAIN
         # On a new training process of the same network we check for new build/train up to 10
         costs_flag = False
         self.build_control()
+        os.mkdir(self.build_path)
         self.epochs = epochs
         self.learning_rate = learning_rate
         self.minibatch_size = minibatch_size
-        graph = tf.Graph()
-        self.graph = graph
-        begin = time.time()
         X_data = self.normalize(data)
         X_data = X_data.astype('float32')
+        
         if self.edition == netco.TREND or self.edition == netco.CYCLES:
             X_data = X_data.astype({'LABEL': int})
-        Y_data = X_data.pop('LABEL')
+
         X_train, X_test = train_test_split(X_data, test_size=test_size)
-        Y_train, Y_test = train_test_split(Y_data, test_size=test_size)
+        Y_train = X_train.pop('LABEL')
+        Y_test = X_test.pop('LABEL')
+        '''
+        if self.edition == netco.TREND or self.edition == netco.CYCLES:
+            Y_train = nets.labelMaker(Y_train,outputs)
+            Y_test = nets.labelMaker(Y_test,outputs)
+        
+        else:
+            Y_train = Y_train
+            Y_test = Y_test
+        '''
         DATASET_TRAIN = tf.data.Dataset.from_tensor_slices((X_train.values, Y_train.values))
         DATASET_TEST = tf.data.Dataset.from_tensor_slices((X_test.values, Y_test.values))
-        
+        DATASET_TEST = DATASET_TEST.batch(minibatch_size)
         if shuffle=='True':
-            shuffle = True
+            #DATASET_TRAIN = DATASET_TRAIN.shuffle(len(X_train)-1).batch(minibatch_size)
             DATASET_TRAIN = DATASET_TRAIN.shuffle(1024).batch(minibatch_size)
-            print(self.cli_name+" Splitting Dataset with size "+str(test_size)+". Shuffling: Enabled!")
+            print(f"{self.cli_name} Splitting Dataset with size {test_size}. Shuffling: Enabled!")
         else:
-            shuffle = False
             DATASET_TRAIN = DATASET_TRAIN.batch(minibatch_size)
-            print(self.cli_name+" Splitting Dataset with size "+str(test_size)+". Shuffling: Disabled!")
-        
-        #X_train = X_train.reset_index(drop=True)
-        #X_test = X_test.reset_index(drop=True)
-        #self.train_df = X_train
-        #self.test_df = X_test
-        '''
-        if self.edition == netco.TREND:
-            Y_train = nets.labelMaker(X_train[['LABEL']],outputs).transpose()
-            Y_test = nets.labelMaker(X_test[['LABEL']],outputs).transpose()
-        elif self.edition == netco.CYCLES:
-            Y_train = nets.labelMaker(X_train[['LABEL']],outputs).transpose()
-            Y_test = nets.labelMaker(X_test[['LABEL']],outputs).transpose()
-        elif self.edition == netco.ENGINE:
-            Y_train = X_train[['LABEL']].values.transpose()
-            Y_test = X_test[['LABEL']].values.transpose()
-        else:
-            Y_train = X_train[['LABEL']].values.transpose()
-            Y_test = X_test[['LABEL']].values.transpose()
-        '''
-        # [Plotting Train and Test Data at the stage of training]
-        #X_train = X_train.drop(["LABEL"],axis=1)
-        #X_test = X_test.drop(["LABEL"],axis=1)
-        X_train = X_train.values.transpose()
-        X_test = X_test.values.transpose()
+            print(f"{self.cli_name} Splitting Dataset with size {test_size}. Shuffling: Disabled!")
         
         tf.random.set_seed(1)
-        #tf.compat.v1.reset_default_graph()
         seed = 3
-        (n_x, m) = X_train.shape
-        n_y = Y_train.shape[0]
-        self.costs_train = []
-        self.costs_test = []
-        self.accuracy_train = []
-        self.accuracy_test = []
-        self.init_layers()
-        
-        # [Add Forward Propogation to the graph]
-        final = tf.identity(self.forward_propagation(X_train),name="Final")
-        final = final.numpy()
-        print(final)
-        with tqdm(total=num_minibatches,desc = "Progress:  ",unit="mini") as minibar:
+        self.network_metrics = pd.DataFrame(
+            columns=[
+                netco.TRAIN_LOSS,netco.TRAIN_ACC,
+                netco.TEST_LOSS,netco.TEST_ACC
+                ])
+        self.construct()
+        begin = time.time()
+        # [Training Loop]
+        with tqdm(total = epochs, unit="epo") as pbar:
             for epoch in range(epochs):
-                pass
-            
+                self.train_loss.reset_states()
+                self.train_accuracy.reset_states()
+                self.test_loss.reset_states()
+                self.test_accuracy.reset_states()
 
+                for samples,labels in DATASET_TRAIN:
+                    self.train_step(samples,labels)
+            
+                for test_samples, test_labels in DATASET_TEST:
+                    self.test_step(test_samples, test_labels)
 
-        #print(final.numpy())
-        print("EDW")
-        '''
-        with self.graph.as_default():
-            #serialized_tf_example = tf.placeholder(tf.string, name='tf_example')
-            #feature_configs = {'x': tf.io.FixedLenFeature(shape=[n_y], dtype=tf.float32),}
-            #tf_example = tf.io.parse_example(serialized_tf_example, feature_configs)
-            # [Create Placeholders of shape (n_x, n_y)]
-            #X, Y = nets.create_placeholders(n_x, n_y)
-            # [Initialize layer parameters]
-            self.init_layers()
-            
-            # [Add Forward Propogation to the graph]
-            final = tf.identity(self.forward_propagation(X_train),name="Final")
-            print(self.Weights['W1'].numpy())
-            #print(final.numpy())
-            print("EDW")
-            # [Adding cost function for the Adam optimizer to the graph]
-            #cost = nets.softmax_cross_entropy(final, Y)
-            #cost = nets.network_cost_function(final, Y, loss)
-            #values, indices = tf.nn.top_k(final, n_y)
-            #table = tf.lookup.index_to_string_table_from_tensor(tf.constant([str(i) for i in range(n_y)]))
-            #prediction_classes = table.lookup(tf.to_int64(indices))
-            #prediction_classes = table.lookup(tf.cast(indices,tf.int64))
-            #builder = tf.saved_model.builder.SavedModelBuilder(self.build_path)
-            #train_writer = tf.summary.FileWriter(self.version_path+"/train", sess.graph)
-            
-            # [Training loop]
-            print(self.cli_name+"\n")
-            with tqdm(total = epochs,desc = "Cost:  ",unit="epo") as pbar:
-                for epoch in range(epochs):
-                    # [Calculate cost related to an epoch]
-                    epoch_cost = 0
-                    num_minibatches = int(m / minibatch_size) # number of minibatches of size minibatch_size in the train set
-                    seed = seed + 1
-                    minibatches = nets.random_mini_batches(X_train, Y_train, minibatch_size, seed)
-                    with tqdm(total=num_minibatches,desc = "Progress:  ",unit="mini") as minibar:
-                        for minibatch in minibatches:
-                            # [Select a minibatch]
-                            (minibatch_X, minibatch_Y) = minibatch
-                        
-                            _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
-                            
-                            epoch_cost += minibatch_cost / num_minibatches
-                            minibar.update(n=1)
-                    self.costs_test.append(round(sess.run(cost,feed_dict={X: X_test, Y:Y_test}),4))
-                    self.costs_train.append(round(epoch_cost,4))
-                    
-                    if self.edition == netco.TREND or self.edition == netco.CYCLES:
-                        correct_prediction = tf.equal(output_function(final), output_function(Y))
-                        accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-                        train_acc = accuracy.eval({X: X_train, Y: Y_train})
-                        test_acc = accuracy.eval({X: X_test, Y: Y_test})
-                    else:
-                        predictions_train = sess.run(output_function(final),feed_dict={X: X_train})
-                        predictions_test = sess.run(output_function(final),feed_dict={X: X_test})
-                        train_acc = mean_absolute_error(Y_train, predictions_train)
-                        test_acc = mean_absolute_error(Y_test, predictions_test)
-                    self.accuracy_train.append(round(train_acc,4))
-                    self.accuracy_test.append(round(test_acc,4))
-
-                    pbar.set_description('Cost: {} '.format(round(epoch_cost,4)))
-                    pbar.refresh() # to show immediately the update
-                    pbar.update(n=1)
-                    if epoch % 50 == 0:
-                        print('')
-            # [Saving the parameters in a variable]
-            self.layers = sess.run(self.layers)
-            print(self.cli_name,"Finished Neural Training!")
-            
-            classification_inputs = tf.saved_model.utils.build_tensor_info(serialized_tf_example)
-            classification_outputs_classes = tf.saved_model.utils.build_tensor_info(prediction_classes)
-            classification_outputs_scores = tf.saved_model.utils.build_tensor_info(values)
-
-            classification_signature = (tf.saved_model.signature_def_utils.build_signature_def(
-                inputs={
-                    tf.saved_model.CLASSIFY_INPUTS:classification_inputs},
-                outputs={
-                    tf.saved_model.CLASSIFY_OUTPUT_CLASSES:classification_outputs_classes,
-                    tf.saved_model.CLASSIFY_OUTPUT_SCORES:classification_outputs_scores},
-                method_name=tf.saved_model.CLASSIFY_METHOD_NAME))
-            
-            tensor_info_x = tf.saved_model.utils.build_tensor_info(X)
-            tensor_info_y = tf.saved_model.utils.build_tensor_info(final)
-            
-            prediction_signature = (
-                tf.saved_model.signature_def_utils.build_signature_def(
-                    inputs={'images': tensor_info_x},
-                    outputs={'scores': tensor_info_y},
-                    method_name=tf.saved_model.PREDICT_METHOD_NAME))
-
-            builder.add_meta_graph_and_variables(
-                sess, [tf.saved_model.SERVING],
-                signature_def_map={
-                    'predict_images':
-                        prediction_signature,
-                    tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
-                        classification_signature,
-                },
-                main_op=tf.tables_initializer(),
-                strip_default_attrs=True)
-
-            builder.save()
-            
-            
-            finish = time.time()
-            self.training_time = round(finish-begin,2)
-            print(self.cli_name,"Time for training was",self.training_time,"seconds")
-
-            # [Calculating the correct predictions]
-            
-            self.predictions_train = sess.run(output_function(final),feed_dict={X: X_train}).T
-            self.predictions_test = sess.run(output_function(final),feed_dict={X: X_test}).T
-            self.predictions = np.concatenate((self.predictions_train,self.predictions_test),axis=0)
-            tf.summary.histogram("predictions", final)
-            print(self.cli_name+" Train Accuracy:", self.accuracy_train[-1])
-            print(self.cli_name+" Test Accuracy:",self.accuracy_test[-1])
-
-            saver.save(sess, self.version_path+'/model.ckpt')
-
-            X_ordered= X_data.drop(["LABEL"],axis=1)
-            X_ordered = X_ordered.values.transpose()
-            self.ordered_predictions = sess.run(output_function(final),feed_dict={X: X_ordered}).T
-            self.labels = X_data['LABEL']
-            
-            self.network_training_summary_report()
-              
-        return self.predictions
-        '''
-        return 0
-        
-        
-    def init_layers(self):
-        """
-        Initializes parameters to build a neural network with tensorflow. The shapes are:
-            W1 : [num_hidden_layer_1, num_input_features]
-            b1 : [num_hidden_layer_1, 1]
-            ...[hidden layers]
-            Wn : [num_hidden_layer_n, num_hidden_layer_n-1]
-            bn : [num_hidden_layer_n, 1]
-        Returns:
-            self.layers -- a dictionary of tensors containing W1, b1, W2, b2...
-        """
-        self.Weights = {}
-        self.Biases = {}
-        for layer_counter,layer in enumerate(self.structure,start=0):
-            name_W = 'W'+str(layer_counter)
-            name_b = 'b'+str(layer_counter)
-            self.Weights[name_W] = nets.init_Weight([int(layer[0]), int(layer[1])],name_W)
-            self.Biases[name_b] = nets.init_Bias([int(layer[0]), 1],name_b)
-            
-    def forward_propagation(self,X):
-        # [A: List of linear combinations]
-        # [Z: LIst of layer outputs after the activation function has taken effect on A]
-        A = []
-        Z = []
-        Z.append(X)
-        for layer_counter,layer in enumerate(self.structure,start=0):
-            activation_function = layer[2]
-            if activation_function == netco.LINEAR:
-                # [LINEAR layer]
-                A.append(tf.add(tf.matmul(self.Weights["W"+str(layer_counter)], Z[layer_counter]), self.Biases["b"+str(layer_counter)]))
-                Z.append(A[layer_counter])
-            elif activation_function == netco.TANH:
-                # [TANH layer]
-                A.append(tf.add(tf.matmul(self.Weights["W"+str(layer_counter)], Z[layer_counter]), self.Biases["b"+str(layer_counter)]))
-                Z.append(tf.nn.tanh(A[layer_counter]))
-            elif activation_function == netco.SIGMOID:
-                # [SIGMOID layer]
-                A.append(tf.add(tf.matmul(self.Weights["W"+str(layer_counter)], Z[layer_counter]), self.Biases["b"+str(layer_counter)]))
-                Z.append(tf.nn.sigmoid(A[layer_counter]))
-            elif activation_function == netco.RELU:
-                # [RELU layer]
-                A.append(tf.add(tf.matmul(self.Weights["W"+str(layer_counter)], Z[layer_counter]), self.Biases["b"+str(layer_counter)]))
-                Z.append(tf.nn.relu(A[layer_counter]))
-            else:
-                raise NameError('There is an error with the activation functions in network_structure.json. Check the file and retry.')
-        # [Return last layer]
-        return Z[-1]
-
+                train_epo_cost = round(self.train_loss.result().numpy(),6)
+                train_epo_acc = round(self.train_accuracy.result().numpy(),6)*100
+                test_epo_cost = round(self.test_loss.result().numpy(),6)
+                test_epo_acc = round(self.test_accuracy.result().numpy(),6)*100
+                self.network_metrics.loc[epoch] = [train_epo_cost, train_epo_acc, test_epo_cost, test_epo_acc]
+                pbar.set_description(f"Loss: {train_epo_cost:.3f}, Test Loss: {test_epo_cost:.3f}")
+                pbar.refresh() # to show immediately the update
+                pbar.update(n=1)
+                if epoch % 50 == 0:
+                    print('')
+        print(self.network_metrics)
+        self.numpy_trainable_variables = {}
+        for var in self.trainable_variables:
+            self.numpy_trainable_variables[var.name] = var.numpy()
+        finish = time.time()
+        self.training_time = round(finish-begin,4)
+        self.network_training_summary_report()
 
     def normalize(self,data):
         '''Normalize data and save normalizers for later inference'''
         normalizers_file = "data_normalizers.json"
         save_path = os.path.join(self.version_path,normalizers_file)
-        if self.function == netco.TRAINING:
+        if self.function == netco.TRAIN:
             final_df, normalizers = normalizeDataFrame(data)
             normalizers.to_json(path_or_buf=save_path,orient='columns')
         elif self.function == netco.INFERENCE:
@@ -375,79 +273,81 @@ class Network():
 
     def network_training_summary_report(self):
         '''Save a training summary report for the trained network'''
-        settings_file = self.name+".training_summary.txt"
-        layers_matlab_file = self.name+".layers.mat"
+        settings_file = self.cass_name+".training_summary.txt"
+        layers_matlab_file = self.cass_name+".layers.mat"
         exit_path = os.path.join(self.build_path,settings_file)
         layers_path = os.path.join(self.build_path,layers_matlab_file)
         lines = [
-                '[GENERAL-INFORMATION]',
-                'Network Edition: ' + self.edition,
-                'Network Name: ' + self.name,
-                'Network Version: ' + self.version,
-                'Network Build Version: ' + self.build_version,
-                '',
-                '[TRAINING-EVALUATION-REPORT]',
-                'Epochs: ' + str(self.epochs),
-                'Learning Rate: ' + str(self.learning_rate),
-                'Minibatch Size: ' + str(self.minibatch_size),
-                'Training Accuracy: ' + str(self.accuracy_train[-1]) + "%",
-                'Testing Accuracy: ' + str(self.accuracy_test[-1]) + "%",
-                'Training Time: ' + str(self.training_time) + " seconds",
-                '',
-                '[PATHS]',
-                'root_path: \"'+self.root_path+'\"',
-                'version_path: \"'+self.version_path+'\"',
-                'build_path: \"'+self.build_path+'\"'
+                f'[GENERAL-INFORMATION]',
+                f'Network Edition: {self.edition}',
+                f'Network Name: {self.cass_name}',
+                f'Network Version: {self.version}',
+                f'Network Build Version: {self.build_version}',
+                f'',
+                f'[TRAINING-EVALUATION-REPORT]',
+                f'Epochs: {self.epochs}',
+                f'Learning Rate: {self.learning_rate}',
+                f'Minibatch Size: {self.minibatch_size}',
+                f'Training Accuracy: {self.network_metrics[netco.TRAIN_ACC].loc[self.epochs-1]} %',
+                f'Testing Accuracy: {self.network_metrics[netco.TEST_ACC].loc[self.epochs-1]} %',
+                f'Training Time: {self.training_time} seconds',
+                f'',
+                f'[PATHS]',
+                f'root_path: {self.root_path}',
+                f'version_path: {self.version_path}',
+                f'build_path: {self.build_path}'
                 ]
         with open(exit_path,"w") as file:
             for line in lines:
                 file.write(line+'\n')
-        print(self.cli_name+" Exporting Information File to "+self.build_path)
-        scipy.io.savemat(layers_path, self.layers)
+        print(f"{self.cli_name} Exporting Information File to {self.build_path}")
+        scipy.io.savemat(layers_path, self.numpy_trainable_variables)
 
 class NNClassifier(Network):
     def __init__(self,edition,flag,base_name,root_path,features):
         Network.__init__(self,edition,flag,base_name,root_path,features)
-        self.get_general()
-
+        
     def get_general(self):
-        self.loss = netco.SOFTMAX_CROSS_ENTROPY
-        self.output_function = tf.argmax
+        #self.loss = netco.SOFTMAX_CROSS_ENTROPY
+        #self.output_function = tf.argmax
         self.optimizer = tf.optimizers.Adam(
                 learning_rate=0.001,beta_1=0.9,
                 beta_2=0.999,
                 epsilon=1e-07,
             )
+        #self.train_loss = tf.keras.metrics.Mean(name='train_loss')
+        #self.train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
+            
 
     def train(self,data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs):
+        #self.get_general()
         super().train(data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs)
         self.plot_accuracy()
         self.plot_costs()
+        plt.show()
 
     def plot_costs(self):
         '''Timeplots of costs'''
         t = np.arange(0.0, self.epochs, 1)
         fig, ax = plt.subplots()
-        ax.plot(t, self.costs_train, label='Train Error')
-        ax.plot(t, self.costs_test, label='Test Error')
-        ax.set(xlabel='Epochs', ylabel='Softmax Cross Entropy',title='Training and Testing Errors for '+self.edition)
+        ax.plot(t, self.network_metrics[netco.TRAIN_LOSS], label='Train Error')
+        ax.plot(t, self.network_metrics[netco.TEST_LOSS], label='Test Error')
+        ax.set(xlabel='Epochs', ylabel='Softmax Cross Entropy',title=f'Training and Testing Errors for {self.edition}')
         ax.grid()
         plt.legend()
         fig.savefig(self.build_path+'/costs.png',dpi=800)
-        plt.show()
 
     def plot_accuracy(self):
         '''Timeplots of accuracy'''
         t = np.arange(0.0, self.epochs, 1)
         fig, ax = plt.subplots()
-        ax.plot(t, self.accuracy_train, label='Train Accuracy')
-        ax.plot(t, self.accuracy_test, label='Test Accuracy')
-        ax.set(xlabel='Epochs', ylabel='Accuracy',title='Training and Testing Accuracy for '+self.edition)
+        ax.plot(t, self.network_metrics[netco.TRAIN_ACC], label='Train Accuracy')
+        ax.plot(t, self.network_metrics[netco.TEST_ACC], label='Test Accuracy')
+        ax.set(xlabel='Epochs', ylabel='Accuracy',title=f'Training and Testing Accuracy for {self.edition}')
         ax.grid()
         plt.legend()
-        plt.ylim(round_down(min(self.accuracy_test)-0.05,2),1)
+        plt.ylim(round_down(min(self.network_metrics['TEST_ACC'])-5,2),100)
         fig.savefig(self.build_path+'/accuracy.png',dpi=800)
-        plt.show()
 
     def inference(self,data,window_settings):
         '''def inference(self,data,window_settings):
@@ -599,12 +499,15 @@ class NNRegressor(Network):
         
     def get_general(self):
         self.loss = netco.MEAN_SQR_ERROR
-        self.output_function = tf.identity
+        #self.output_function = tf.identity
         self.optimizer = tf.optimizers.Adam(
                 learning_rate=0.001,beta_1=0.9,
                 beta_2=0.999,
                 epsilon=1e-07,
             )
+        self.train_loss = tf.keras.metrics.Mean(name='train_loss')
+        self.train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
+
 
     def train(self,data,epochs,learning_rate,minibatch_size,shuffle,test_size,outputs):
         cycle_full = self.root_path.split('/')[-1]
