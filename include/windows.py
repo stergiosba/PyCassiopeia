@@ -18,25 +18,26 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
-from .utils import windowUnits,EPS,ACC_THRESHOLD
+from .utils import windowUnits, EPS, ACC_THRESHOLD
 import include.network.net_constants as netco
 
-#[DEPRECATED]
-def cycleWindow(_data_df,features_list,window_settings,model_path):
+
+# [DEPRECATED]
+def cycleWindow(_data_df, features_list, window_settings, model_path):
     begin = time.time()
 
-    #exit setting
+    # exit setting
     w_size = window_settings[0]
     w_step = window_settings[1]
-    print(50*"-")
+    print(50 * "-")
     print("~$> Initializing Window Making Processing for Engine Cycles")
-    print(50*"-")
-    print("~$> Window size",w_size,"seconds.")
-    print("~$> Window step",w_step,"seconds.")
-    print(50*"-")
+    print(50 * "-")
+    print("~$> Window size", w_size, "seconds.")
+    print("~$> Window step", w_step, "seconds.")
+    print(50 * "-")
     fit_df = pd.DataFrame(columns=features_list)
     # [Finding maximum count of correct length windows]
-    w_count = windowUnits(len(_data_df)-1,w_size-1,w_step)
+    w_count = windowUnits(len(_data_df) - 1, w_size - 1, w_step)
 
     print("~$> Total Windows Progression")
     for cycle in _data_df:
@@ -44,10 +45,10 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
         w_start = 0
         w_end = w_size
         Cycle_Final = pd.DataFrame()
-        with tqdm(total = w_count,desc = "~$> ",unit="win") as pbar:
-            for window in range(cycle_df.index.min(),cycle_df.index.max(),w_step):
+        with tqdm(total=w_count, desc="~$> ", unit="win") as pbar:
+            for window in range(cycle_df.index.min(), cycle_df.index.max(), w_step):
                 window_df = cycle_df[w_start:w_end]
-                if len(window_df)!=w_size:
+                if len(window_df) != w_size:
                     continue
                 window_df = window_df.reset_index(drop=True)
                 # Checking for values below EPS and making them zero.
@@ -64,30 +65,30 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
                 counter_P_A_1 = 0
                 counter_P_A_2 = 0
                 for time_step in window_df.index:
-                    if window_df[time_step]<=0.30:
-                        counter_P_N_030+=1
-                    elif 0.30<window_df[time_step] and window_df[time_step]<0.50:
-                        counter_P_N_3050+=1
-                    elif 0.50<window_df[time_step] and window_df[time_step]<0.70:
-                        counter_P_N_5070+=1
+                    if window_df[time_step] <= 0.30:
+                        counter_P_N_030 += 1
+                    elif 0.30 < window_df[time_step] and window_df[time_step] < 0.50:
+                        counter_P_N_3050 += 1
+                    elif 0.50 < window_df[time_step] and window_df[time_step] < 0.70:
+                        counter_P_N_5070 += 1
                     else:
-                        counter_P_N_70100+=1
-                    if time_step==0:
+                        counter_P_N_70100 += 1
+                    if time_step == 0:
                         pass
                     else:
-                        acc = window_df[time_step]-window_df[time_step-1]
+                        acc = window_df[time_step] - window_df[time_step - 1]
                         if acc > 0:
                             acc_list.append(acc)
-                            if 0<acc<0.003:
-                                counter_P_A_1+=1
+                            if 0 < acc < 0.003:
+                                counter_P_A_1 += 1
                             elif 0.003:
-                                counter_P_A_2+=1
+                                counter_P_A_2 += 1
                         else:
                             dec_list.append(acc)
-                            if -0.005<acc<0:
-                                counter_P_D_1+=1
+                            if -0.005 < acc < 0:
+                                counter_P_D_1 += 1
                             else:
-                                counter_P_D_2+=1
+                                counter_P_D_2 += 1
                 if len(dec_list) == 0:
                     ave_win_dec = 0
                     max_win_dec = 0
@@ -106,47 +107,57 @@ def cycleWindow(_data_df,features_list,window_settings,model_path):
                     max_win_acc = max(acc_list)
                     std_win_acc = stats.stdev(acc_list)
 
-                Cycle_Final = Cycle_Final.append({
-                'LABEL': cycle,
-                'N_MAX': round(window_df.max(),4),
-                'N_AVE': round(window_df.mean(),4),
-                'A_MAX': round(max_win_acc,4),
-                'A_AVE': round(ave_win_acc,4),
-                'A_STD': round(std_win_acc,4),
-                'D_MAX': round(max_win_dec,4),
-                'D_AVE': round(ave_win_dec,4),
-                'P_N_030': round(counter_P_N_030/len(window_df),4),
-                'P_N_3050': round(counter_P_N_3050/len(window_df),4),
-                'P_N_5070': round(counter_P_N_5070/len(window_df),4),
-                'P_N_70100':round(counter_P_N_70100/len(window_df),4),
-                'P_D_1':round(counter_P_D_1/len(window_df),4),
-                'P_D_2':round(counter_P_D_2/len(window_df),4),
-                'P_A_1':round(counter_P_A_1/len(window_df),4),
-                'P_A_2':round(counter_P_A_2/len(window_df),4)
-                },ignore_index=True)
+                Cycle_Final = Cycle_Final.append(
+                    {
+                        "LABEL": cycle,
+                        "N_MAX": round(window_df.max(), 4),
+                        "N_AVE": round(window_df.mean(), 4),
+                        "A_MAX": round(max_win_acc, 4),
+                        "A_AVE": round(ave_win_acc, 4),
+                        "A_STD": round(std_win_acc, 4),
+                        "D_MAX": round(max_win_dec, 4),
+                        "D_AVE": round(ave_win_dec, 4),
+                        "P_N_030": round(counter_P_N_030 / len(window_df), 4),
+                        "P_N_3050": round(counter_P_N_3050 / len(window_df), 4),
+                        "P_N_5070": round(counter_P_N_5070 / len(window_df), 4),
+                        "P_N_70100": round(counter_P_N_70100 / len(window_df), 4),
+                        "P_D_1": round(counter_P_D_1 / len(window_df), 4),
+                        "P_D_2": round(counter_P_D_2 / len(window_df), 4),
+                        "P_A_1": round(counter_P_A_1 / len(window_df), 4),
+                        "P_A_2": round(counter_P_A_2 / len(window_df), 4),
+                    },
+                    ignore_index=True,
+                )
                 prev_cycle = cycle
-                w_start+=w_step
-                w_end+=w_step
+                w_start += w_step
+                w_end += w_step
                 pbar.update(n=1)
-            Cycle_Final = Cycle_Final.astype({'LABEL': int})
-            if not os.path.exists(model_path): os.makedirs(model_path)
-            Cycle_Final.to_csv(os.path.join(model_path,netco.INFERENCE+"_"+str(cycle)+".csv"),index=False)
-        fit_df = fit_df.append(Cycle_Final,sort=False,ignore_index=True)
+            Cycle_Final = Cycle_Final.astype({"LABEL": int})
+            if not os.path.exists(model_path):
+                os.makedirs(model_path)
+            Cycle_Final.to_csv(
+                os.path.join(model_path, netco.INFERENCE + "_" + str(cycle) + ".csv"),
+                index=False,
+            )
+        fit_df = fit_df.append(Cycle_Final, sort=False, ignore_index=True)
 
-    print(50*"-")    
+    print(50 * "-")
     print("~$> Plotting Pearson Correlation Matrix")
 
-    correlations = fit_df[fit_df.columns].corr(method='pearson')
-    heat_ax = sns.heatmap(correlations, cmap="YlGnBu", annot = True)
-    #plt.show()
-    if not os.path.exists(model_path): os.makedirs(model_path)
-    fit_df.to_csv(model_path+"/"+netco.TRAINING+".csv",index=False)
+    correlations = fit_df[fit_df.columns].corr(method="pearson")
+    heat_ax = sns.heatmap(correlations, cmap="YlGnBu", annot=True)
+    # plt.show()
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+    fit_df.to_csv(model_path + "/" + netco.TRAINING + ".csv", index=False)
 
     finish = time.time()
-    print(50*"-")
-    print("~$> Time for data process was",round(finish-begin,2),"seconds.")
-    print(50*"-")
-'''
+    print(50 * "-")
+    print("~$> Time for data process was", round(finish - begin, 2), "seconds.")
+    print(50 * "-")
+
+
+"""
 def trendWindow2(_data_df,features_list,measurements,window_settings,model_path):
     begin = time.time()
 
@@ -235,21 +246,23 @@ def trendWindow2(_data_df,features_list,measurements,window_settings,model_path)
     print(50*"-")
     print("~$> Time for data process was",round(finish-begin,2),"seconds.")
     print(50*"-")
-'''
-def trendWindow(_data_df,features_list,window_settings,model_path):
+"""
+
+
+def trendWindow(_data_df, features_list, window_settings, model_path):
     begin = time.time()
-    #exit setting
+    # exit setting
     w_size = window_settings[0]
     w_step = window_settings[1]
-    print(50*"-")
+    print(50 * "-")
     print("~$> Initializing Window Making Processing for Speed Trend Prediction")
-    print(50*"-")
-    print("~$> Window size",w_size,"seconds.")
-    print("~$> Window step",w_step,"seconds.")
-    print(50*"-")
+    print(50 * "-")
+    print("~$> Window size", w_size, "seconds.")
+    print("~$> Window step", w_step, "seconds.")
+    print(50 * "-")
     fit_df = pd.DataFrame(columns=features_list)
     # [Finding maximum count of correct length windows]
-    w_count = windowUnits(len(_data_df)-1,w_size-1,w_step)
+    w_count = windowUnits(len(_data_df) - 1, w_size - 1, w_step)
 
     print("~$> Total Windows Progression")
     counter = 0
@@ -259,61 +272,78 @@ def trendWindow(_data_df,features_list,window_settings,model_path):
         w_end = w_size
         Cycle_Final = pd.DataFrame(columns=features_list)
         ins = 0
-        with tqdm(total = w_count,desc = "~$> ",unit="win") as pbar:
-            for window in range(cycle_df.index.min(),cycle_df.index.max(),w_step):
+        with tqdm(total=w_count, desc="~$> ", unit="win") as pbar:
+            for window in range(cycle_df.index.min(), cycle_df.index.max(), w_step):
                 window_df = cycle_df[w_start:w_end]
-                if len(window_df)!=w_size:
+                if len(window_df) != w_size:
                     continue
-                #window_df = window_df.reset_index(drop=True)
+                # window_df = window_df.reset_index(drop=True)
                 # Checking for values below EPS and making them zero.
-                
+
                 window_df = window_df.apply(lambda x: x if x > EPS else 0)
                 # Initializing the counters
                 acc_list = []
                 for time_step in window_df.index:
-                    if time_step==0+w_start:
+                    if time_step == 0 + w_start:
                         pass
                     else:
-                        acc = window_df[time_step]-window_df[time_step-1]
+                        acc = window_df[time_step] - window_df[time_step - 1]
                         acc_list.append(acc)
-                ave_win_acc = round(stats.mean(acc_list),6)
-                max_win_revs = round(window_df.max(),4)
-                min_win_revs = round(window_df.min(),4)
-                ave_win_revs = round(window_df.mean(),4)
-                in_win_revs = round(window_df[window_df.index.min()],4)
-                out_win_revs = round(window_df[window_df.index.max()],4)
-                if w_start == 0:                    
-                    if (ave_win_revs>EPS and ave_win_revs<0.3):
-                        label = 1 #Low Speed Steady
-                    elif (ave_win_revs>0.3 and ave_win_revs<0.6):
-                        label = 2 #Mid Speed Steady
-                    elif (ave_win_revs>0.6):
-                        label = 3 #High Speed Steady
+                ave_win_acc = round(stats.mean(acc_list), 6)
+                max_win_revs = round(window_df.max(), 4)
+                min_win_revs = round(window_df.min(), 4)
+                ave_win_revs = round(window_df.mean(), 4)
+                in_win_revs = round(window_df[window_df.index.min()], 4)
+                out_win_revs = round(window_df[window_df.index.max()], 4)
+                if w_start == 0:
+                    if ave_win_revs > EPS and ave_win_revs < 0.3:
+                        label = 1  # Low Speed Steady
+                    elif ave_win_revs > 0.3 and ave_win_revs < 0.6:
+                        label = 2  # Mid Speed Steady
+                    elif ave_win_revs > 0.6:
+                        label = 3  # High Speed Steady
                     prev_label = label
                 else:
-                    if (ave_win_revs<EPS and max_win_revs<EPS and min_win_revs<EPS):
-                        label = 0 #Dead Stop
-                    elif (ave_win_revs>EPS and ave_win_revs<0.3 and ave_win_acc<ACC_THRESHOLD and ave_win_acc>-ACC_THRESHOLD):
-                        label = 1 #Low Speed Steady
-                    elif (ave_win_revs>0.3 and ave_win_revs<0.6 and ave_win_acc<ACC_THRESHOLD and ave_win_acc>-ACC_THRESHOLD):
-                        label = 2 #Mid Speed Steady
-                    elif (ave_win_revs>0.6 and ave_win_acc<ACC_THRESHOLD and ave_win_acc>-ACC_THRESHOLD):
-                        label = 3 #High Speed Steady
-                    elif (ave_win_acc>=ACC_THRESHOLD):
-                        label = 4 #Acceleration
-                    elif (ave_win_acc<=-ACC_THRESHOLD):
-                        label = 5 #Deceleration
+                    if ave_win_revs < EPS and max_win_revs < EPS and min_win_revs < EPS:
+                        label = 0  # Dead Stop
+                    elif (
+                        ave_win_revs > EPS
+                        and ave_win_revs < 0.3
+                        and ave_win_acc < ACC_THRESHOLD
+                        and ave_win_acc > -ACC_THRESHOLD
+                    ):
+                        label = 1  # Low Speed Steady
+                    elif (
+                        ave_win_revs > 0.3
+                        and ave_win_revs < 0.6
+                        and ave_win_acc < ACC_THRESHOLD
+                        and ave_win_acc > -ACC_THRESHOLD
+                    ):
+                        label = 2  # Mid Speed Steady
+                    elif (
+                        ave_win_revs > 0.6
+                        and ave_win_acc < ACC_THRESHOLD
+                        and ave_win_acc > -ACC_THRESHOLD
+                    ):
+                        label = 3  # High Speed Steady
+                    elif ave_win_acc >= ACC_THRESHOLD:
+                        label = 4  # Acceleration
+                    elif ave_win_acc <= -ACC_THRESHOLD:
+                        label = 5  # Deceleration
 
-                Cycle_Final = Cycle_Final.append({
-                    'LABEL': prev_label,
-                    'N_MAX': max_win_revs,
-                    'N_MIN': min_win_revs,
-                    'N_AVE': ave_win_revs,
-                    'N_IN' : in_win_revs,
-                    'N_OUT': out_win_revs,
-                    'A_AVE': ave_win_acc
-                },ignore_index=True)
-                '''
+                Cycle_Final = Cycle_Final.append(
+                    {
+                        "LABEL": prev_label,
+                        "N_MAX": max_win_revs,
+                        "N_MIN": min_win_revs,
+                        "N_AVE": ave_win_revs,
+                        "N_IN": in_win_revs,
+                        "N_OUT": out_win_revs,
+                        "A_AVE": ave_win_acc,
+                    },
+                    ignore_index=True,
+                )
+                """
                 font = {#'family':'',
                 'color':'black',
                 'weight':'normal',
@@ -349,33 +379,38 @@ def trendWindow(_data_df,features_list,window_settings,model_path):
                         plt.annotate('', xy=(w_start,0.9), xytext=(w_end-1,0.9),arrowprops={'arrowstyle': '<->','lw': 3}, va='center')
                     
                 ax=window_df.plot(color=(0/255,100/255,200/255))
-                '''
+                """
                 prev_label = label
-                w_start+=w_step
-                w_end+=w_step
+                w_start += w_step
+                w_end += w_step
                 pbar.update(n=1)
-                #ins+=1
-            Cycle_Final = Cycle_Final.astype({'LABEL': int})
-            #ax.grid()
-            counter+=1
-            #major_ticks = np.arange(0, 600, 50)
-            #minor_ticks = np.arange(0, 101, 5)
-            #ax.set_xticks(major_ticks)
-            #plt.show()
-            if not os.path.exists(model_path): os.makedirs(model_path)
-            #plt.savefig(os.path.join(model_path,'trained_model_'+str(counter)+'.png'),dpi=800)
-            Cycle_Final.to_csv(os.path.join(model_path,netco.INFERENCE+"_"+str(cycle)+".csv"),index=False)
-        fit_df = fit_df.append(Cycle_Final,sort=False,ignore_index=True)
+                # ins+=1
+            Cycle_Final = Cycle_Final.astype({"LABEL": int})
+            # ax.grid()
+            counter += 1
+            # major_ticks = np.arange(0, 600, 50)
+            # minor_ticks = np.arange(0, 101, 5)
+            # ax.set_xticks(major_ticks)
+            # plt.show()
+            if not os.path.exists(model_path):
+                os.makedirs(model_path)
+            # plt.savefig(os.path.join(model_path,'trained_model_'+str(counter)+'.png'),dpi=800)
+            Cycle_Final.to_csv(
+                os.path.join(model_path, netco.INFERENCE + "_" + str(cycle) + ".csv"),
+                index=False,
+            )
+        fit_df = fit_df.append(Cycle_Final, sort=False, ignore_index=True)
 
-    print(50*"-")    
+    print(50 * "-")
     print("~$> Plotting Pearson Correlation Matrix")
 
-    correlations = fit_df[fit_df.columns].corr(method='pearson')
-    heat_ax = sns.heatmap(correlations, cmap="YlGnBu", annot = True)
-    #plt.show()
-    if not os.path.exists(model_path): os.makedirs(model_path)
-    fit_df.to_csv(model_path+"/"+netco.TRAINING+".csv",index=False)
+    correlations = fit_df[fit_df.columns].corr(method="pearson")
+    heat_ax = sns.heatmap(correlations, cmap="YlGnBu", annot=True)
+    # plt.show()
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+    fit_df.to_csv(model_path + "/" + netco.TRAINING + ".csv", index=False)
     finish = time.time()
-    print(50*"-")
-    print("~$> Time for data process was",round(finish-begin,2),"seconds.")
-    print(50*"-")
+    print(50 * "-")
+    print("~$> Time for data process was", round(finish - begin, 2), "seconds.")
+    print(50 * "-")

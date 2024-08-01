@@ -51,18 +51,18 @@ for i in range(4):
         axes[0, i].set_ylabel(r'$\mathbf{\beta}$ / $\mathbf{\beta_{max}}$',fontdict=font)
 
     axes[0, i].set_xlabel(r'$\mathbf{Time}$ (sec)',fontdict=font)
-    axes[0, i].plot(t, cycles[i], color='blue')
+    axes[0, i].plot(t, cycles[i], color='red')
 
 for i in range(3):
     axes[1, i].set_ylim(0, 1)
     axes[1, i].grid()
-    axes[1, i].set_xlim(0, len(cycles[i+4]))
+    axes[1, i].set_xlim(0, len(cycles[i+0]))
     axes[1, i].set_title('Pattern '+str(i+5))
     if i==0:
         axes[1, i].set_ylabel(r'$\mathbf{\beta}$ / $\mathbf{\beta_{max}}$',fontdict=font)
 
     axes[1, i].set_xlabel(r'$\mathbf{Time}$ (sec)',fontdict=font)
-    axes[1, i].plot(t, cycles[i+4], color='blue')
+    axes[1, i].plot(t, cycles[i+0], color='blue')
 
 plt.subplots_adjust(left=0.05)
 plt.subplots_adjust(right=0.95)
